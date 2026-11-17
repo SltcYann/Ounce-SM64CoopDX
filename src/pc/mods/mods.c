@@ -277,12 +277,12 @@ void mods_refresh_local(void) {
 
     char defaultModsPath[SYS_MAX_PATH] = { 0 };
     snprintf(defaultModsPath, SYS_MAX_PATH, "%s/%s", sys_resource_path(), MOD_DIRECTORY);
-    // When the user folder and the game folder are the same (the Switch keeps
-    // everything in /switch/sm64coopdx), loading it again would generate the
-    // DynOS packs and load every mod a second time.
-    if (!hasUserPath || strcmp(userModPath, defaultModsPath) != 0) {
-        mods_load(&gLocalMods, defaultModsPath, false);
-    }
+#ifdef TARGET_SWITCH
+    // On Switch the user folder and the game folder are both /switch/sm64coopdx:
+    // loading it again would generate the DynOS packs and load every mod twice.
+    if (!hasUserPath || strcmp(userModPath, defaultModsPath) != 0)
+#endif
+    mods_load(&gLocalMods, defaultModsPath, false);
 
     // sort
     mods_sort(&gLocalMods);

@@ -66,12 +66,16 @@ static bool rom_asset_load_segment(u32 physicalAddress, u32 physicalSize) {
     }
 
     fseek(sRomFile, physicalAddress, SEEK_SET);
+#ifdef TARGET_SWITCH
     size_t readSize = fread(sCurrentSegmentMemory, sizeof(u8), physicalSize, sRomFile);
     if (readSize != physicalSize) {
         // a short read leaves garbage in the buffer, and decompressing garbage crashes
         sys_fatal("Could not read the ROM (got %u of %u bytes at 0x%08x).\nIs %s a complete Super Mario 64 (USA) ROM?",
             (unsigned)readSize, (unsigned)physicalSize, (unsigned)physicalAddress, gRomFilename);
     }
+#else
+    fread(sCurrentSegmentMemory, sizeof(u8), physicalSize, sRomFile);
+#endif
 
     u8* decompressed = rom_assets_decompress((u32*)sCurrentSegmentMemory, &sCurrentSegmentSize);
     if (decompressed != NULL) {
