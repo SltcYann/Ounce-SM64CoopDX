@@ -320,7 +320,6 @@ ifeq ($(TARGET_SWITCH),1)
     $(error DEVKITPRO is not set, run: export DEVKITPRO=/opt/devkitpro)
   endif
   DISCORD_SDK := 0
-  COOPNET := 0
   UPDATER := 0
   USE_APP := 0
   OSX_BUILD := 0
@@ -940,7 +939,10 @@ endif
 # CoopNet
 COOPNET_LIBS :=
 ifeq ($(COOPNET),1)
-  ifeq ($(WINDOWS_BUILD),1)
+  ifeq ($(TARGET_SWITCH),1)
+    # built from source by tools/build_coopnet_switch.sh
+    LDFLAGS += -Llib/coopnet/switch -l:libcoopnet.a -l:libjuice.a
+  else ifeq ($(WINDOWS_BUILD),1)
     ifeq ($(TARGET_BITS), 32)
       LDFLAGS += -Llib/coopnet/win32 -l:libcoopnet.a -l:libjuice.a -lbcrypt -liphlpapi
     else
