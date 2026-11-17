@@ -76,6 +76,9 @@ static inline void gfx_sdl_set_vsync(const bool enabled) {
 }
 
 static void gfx_sdl_set_fullscreen(void) {
+#ifdef TARGET_SWITCH
+    return; // the window already covers the screen, see gfx_sdl_init
+#endif
     if (configWindow.reset)
         configWindow.fullscreen = false;
     if (configWindow.fullscreen == IS_FULLSCREEN())
@@ -88,6 +91,21 @@ static void gfx_sdl_set_fullscreen(void) {
         configWindow.exiting_fullscreen = true;
     }
 }
+
+#ifdef TARGET_SWITCH
+// One 1920x1080 surface, the Switch 2 screen's own resolution, in handheld
+// mode and docked alike (the console scales it for a 4K TV). SDL's Switch
+// driver was written for the Switch 1: going fullscreen or resizable makes it
+// swap the surface between 1280x720 and 1920x1080 behind the game's back, and
+// the picture ended up too small or cropped.
+static void gfx_sdl_switch_window_config(void) {
+    configWindow.x = WAPI_WIN_CENTERPOS;
+    configWindow.y = WAPI_WIN_CENTERPOS;
+    configWindow.w = 1920;
+    configWindow.h = 1080;
+    configWindow.fullscreen = false;
+}
+#endif
 
 static void gfx_sdl_reset_dimension_and_pos(void) {
     if (configWindow.exiting_fullscreen) {
@@ -106,12 +124,7 @@ static void gfx_sdl_reset_dimension_and_pos(void) {
     }
 
 #ifdef TARGET_SWITCH
-    // one fixed-size native window; SDL scales it for docked mode
-    configWindow.x = WAPI_WIN_CENTERPOS;
-    configWindow.y = WAPI_WIN_CENTERPOS;
-    configWindow.w = 1280;
-    configWindow.h = 720;
-    configWindow.fullscreen = true;
+    gfx_sdl_switch_window_config(); // the Switch window never changes size
 #endif
     int xpos = (configWindow.x == WAPI_WIN_CENTERPOS) ? SDL_WINDOWPOS_CENTERED : configWindow.x;
     int ypos = (configWindow.y == WAPI_WIN_CENTERPOS) ? SDL_WINDOWPOS_CENTERED : configWindow.y;
@@ -158,13 +171,20 @@ static void gfx_sdl_init(const char *window_title) {
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
 #endif
 
+#ifdef TARGET_SWITCH
+    gfx_sdl_switch_window_config();
+#endif
     int xpos = (configWindow.x == WAPI_WIN_CENTERPOS) ? SDL_WINDOWPOS_CENTERED : configWindow.x;
     int ypos = (configWindow.y == WAPI_WIN_CENTERPOS) ? SDL_WINDOWPOS_CENTERED : configWindow.y;
 
     wnd = SDL_CreateWindow(
         window_title,
         xpos, ypos, configWindow.w, configWindow.h,
+#ifdef TARGET_SWITCH
+        SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN
+#else
         SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE
+#endif
     );
 #ifdef TARGET_SWITCH
     if (!wnd) { sys_fatal("SDL_CreateWindow failed: %s", SDL_GetError()); }
@@ -172,7 +192,14 @@ static void gfx_sdl_init(const char *window_title) {
     ctx = SDL_GL_CreateContext(wnd);
 #ifdef TARGET_SWITCH
     if (!ctx) { sys_fatal("SDL_GL_CreateContext failed: %s", SDL_GetError()); }
-    switch_log_step("window and GL context created");
+    {
+        int ww, wh, dw, dh;
+        SDL_GetWindowSize(wnd, &ww, &wh);
+        SDL_GL_GetDrawableSize(wnd, &dw, &dh);
+        char msg[96];
+        snprintf(msg, sizeof(msg), "window and GL context created: window %dx%d, surface %dx%d", ww, wh, dw, dh);
+        switch_log_step(msg);
+    }
 #endif
 
     gfx_sdl_set_vsync(configWindow.vsync);
@@ -225,7 +252,12 @@ static void gfx_sdl_main_loop(void (*run_one_game_iter)(void)) {
 
 static void gfx_sdl_get_dimensions(uint32_t *width, uint32_t *height) {
     int w, h;
+#ifdef TARGET_SWITCH
+    // the size of the GL surface itself, which is what the game renders into
+    SDL_GL_GetDrawableSize(wnd, &w, &h);
+#else
     SDL_GetWindowSize(wnd, &w, &h);
+#endif
     if (width) *width = w;
     if (height) *height = h;
 }
