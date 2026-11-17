@@ -62,21 +62,3 @@ index c97aab9..1dc8c5a 100755
 +#endif // __SWITCH__
  
  #endif
-diff --git a/common/utils.cpp b/common/utils.cpp
-index f2f12f2..e578db2 100755
---- a/common/utils.cpp
-+++ b/common/utils.cpp
-@@ -74,6 +74,13 @@ std::string getExecutablePath() {
-     if (_NSGetExecutablePath(path, &size) == 0) {
-         return std::string(path);
-     }
-+#elif defined(__SWITCH__)
-+    // The NRO sits in the game folder, which the game makes the current
-+    // directory at startup. Without this the executable hash sent to the
-+    // server would always be 0.
-+    if (getcwd(path, sizeof(path) - 16) != nullptr) {
-+        return std::string(path) + "/sm64coopdx.nro";
-+    }
- #endif
-     return "";
- }

@@ -557,8 +557,6 @@ int main(int argc, char *argv[]) {
     configfile_load();
 
 #ifdef TARGET_SWITCH
-    // there is no console on Switch: errors always go to the log file
-    configDebugError = true;
     switch_log_step("config loaded");
 #endif
 
@@ -584,15 +582,19 @@ int main(int argc, char *argv[]) {
 
     // render the rom setup screen
 #ifdef TARGET_SWITCH
-    if (main_rom_handler()) {
+    // one scan: each one hashes the 8 MB ROM, which takes most of a second here
+    bool romFound = main_rom_handler();
+    if (romFound) {
         char msg[SYS_MAX_PATH + 16];
         snprintf(msg, sizeof(msg), "rom found: %s", gRomFilename);
         switch_log_step(msg);
     } else {
         switch_log_step("no valid rom found, showing rom setup screen");
     }
-#endif
+    if (!romFound) {
+#else
     if (!main_rom_handler()) {
+#endif
         if (!gCLIOpts.hideLoadingScreen) {
             render_rom_setup_screen(); // holds the game load until a valid rom is provided
         } else {

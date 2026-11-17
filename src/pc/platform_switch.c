@@ -83,7 +83,8 @@ void switch_log_step(const char *step) {
     switch_log_raw(line);
 }
 
-void switch_log_memory(void) {
+// process memory and heap use, logged at startup
+static void switch_log_memory(void) {
     u64 total = 0, used = 0;
     svcGetInfo(&total, InfoType_TotalMemorySize, CUR_PROCESS_HANDLE, 0);
     svcGetInfo(&used, InfoType_UsedMemorySize, CUR_PROCESS_HANDLE, 0);
