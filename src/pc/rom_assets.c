@@ -1,9 +1,6 @@
 #include <PR/ultratypes.h>
 #include "rom_assets.h"
 #include "platform.h"
-#ifdef TARGET_SWITCH
-#include "platform_switch.h"
-#endif
 #include "pc/debuglog.h"
 #include "rom_checker.h"
 #include "apparition.inc.c"
@@ -176,28 +173,16 @@ static void rom_asset_load(struct RomAsset* asset) {
 
 void rom_assets_load(void) {
     LOG_INFO("loading asset");
-#ifdef TARGET_SWITCH
-    switch_log_step("rom_assets: start");
-#endif
 
     assert(fs_sys_file_exists(gRomFilename)); // Should never be false
 
     sRomFile = fopen(gRomFilename, "rb");
 #ifdef TARGET_SWITCH
-    switch_log_step(sRomFile ? "rom_assets: ROM opened" : "rom_assets: could not open the ROM");
     if (!sRomFile) { sys_fatal("Could not open the ROM:\n%s", gRomFilename); }
-    int loadedAssets = 0;
 #endif
 
     while (sRomAssets) {
         rom_asset_load(sRomAssets);
-#ifdef TARGET_SWITCH
-        if (++loadedAssets % 2000 == 0) {
-            char msg[64];
-            snprintf(msg, sizeof(msg), "rom_assets: %d assets loaded", loadedAssets);
-            switch_log_step(msg);
-        }
-#endif
 
         struct RomAsset* next = sRomAssets->next;
         free(sRomAssets);

@@ -383,15 +383,6 @@ void *audio_thread(UNUSED void *arg) {
 }
 
 void produce_one_frame(void) {
-#ifdef TARGET_SWITCH
-    static u32 sGameFrames = 0;
-    sGameFrames++;
-    if (sGameFrames <= 120 || sGameFrames % 600 == 0) {
-        char msg[48];
-        snprintf(msg, sizeof(msg), "game frame %u", sGameFrames);
-        switch_log_step(msg);
-    }
-#endif
     CTX_EXTENT(CTX_NETWORK, network_update);
 
     CTX_EXTENT(CTX_INTERP, patch_interpolations_before);
@@ -485,30 +476,14 @@ void game_exit(void) {
 void* main_game_init(UNUSED void* dummy) {
 #ifdef TARGET_SWITCH
     switch_thread_log_init();
-    switch_log_step("loading thread running");
-    switch_log_memory();
 #endif
     // load language
     if (!djui_language_init(configLanguage)) { snprintf(configLanguage, MAX_CONFIG_STRING, "%s", ""); }
 
-#ifdef TARGET_SWITCH
-    switch_log_step("language loaded");
-    switch_log_memory();
-#endif
-
     LOADING_SCREEN_MUTEX(loading_screen_set_segment_text("Loading"));
     dynos_gfx_init();
-#ifdef TARGET_SWITCH
-    switch_log_step("dynos_gfx_init done");
-    switch_log_memory();
-#endif
     enable_queued_dynos_packs();
     sync_objects_init_system();
-
-#ifdef TARGET_SWITCH
-    switch_log_step("dynos packs and sync objects done");
-    switch_log_memory();
-#endif
 
 #ifndef TARGET_SWITCH // no updater on Switch, and no reason to reach GitHub while loading
     if (gCLIOpts.network != NT_SERVER && !gCLIOpts.skipUpdateCheck) {
@@ -517,45 +492,20 @@ void* main_game_init(UNUSED void* dummy) {
 #endif
 
     LOADING_SCREEN_MUTEX(loading_screen_set_segment_text("Loading ROM Assets"));
-#ifdef TARGET_SWITCH
-    switch_log_step("calling rom_assets_load");
-#endif
     rom_assets_load();
-#ifdef TARGET_SWITCH
-    switch_log_step("rom_assets_load done");
-    switch_log_memory();
-#endif
     smlua_text_utils_init();
 
     mods_init();
-#ifdef TARGET_SWITCH
-    switch_log_step("mods_init done");
-    switch_log_memory();
-#endif
     enable_queued_mods();
-
-#ifdef TARGET_SWITCH
-    switch_log_step("mods enabled");
-    switch_log_memory();
-#endif
     LOADING_SCREEN_MUTEX(
         gCurrLoadingSegment.percentage = 0;
         loading_screen_set_segment_text("Starting Game");
     );
 
     audio_init();
-#ifdef TARGET_SWITCH
-    switch_log_step("audio_init done");
-    switch_log_memory();
-#endif
     sound_init();
     network_player_init();
     mumble_init();
-
-#ifdef TARGET_SWITCH
-    switch_log_step("game init finished");
-    switch_log_memory();
-#endif
 
     gGameInited = true;
     return NULL;
@@ -602,8 +552,7 @@ int main(int argc, char *argv[]) {
     configfile_load();
 
 #ifdef TARGET_SWITCH
-    // there is no console on Switch: always send info and errors to the log file
-    configDebugInfo = true;
+    // there is no console on Switch: errors always go to the log file
     configDebugError = true;
     switch_log_step("config loaded");
 #endif

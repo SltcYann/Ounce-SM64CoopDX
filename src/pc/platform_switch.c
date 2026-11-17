@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -28,6 +27,7 @@ u64 __nx_exception_stack_size = sizeof(__nx_exception_stack);
 // The log goes straight to a file descriptor and is synced after every write,
 // because when the game dies the whole process is killed and buffers are lost.
 static int sLogFd = -1;
+static u64 sStartTick = 0;
 static Mutex sLogMutex;
 
 static void switch_log_write(const char *ptr, size_t len) {
@@ -73,7 +73,7 @@ void switch_thread_log_init(void) {
 
 void switch_log_step(const char *step) {
     char line[256];
-    snprintf(line, sizeof(line), "[step %.3fs] %s", (double)armTicksToNs(armGetSystemTick()) / 1e9, step);
+    snprintf(line, sizeof(line), "[%7.3f s] %s", (double)armTicksToNs(armGetSystemTick() - sStartTick) / 1e9, step);
     switch_log_raw(line);
 }
 
@@ -120,21 +120,6 @@ void __libnx_exception_handler(ThreadExceptionDump *ctx) {
     }
 }
 
-// Writes a line every 2 s, so the log shows exactly when the process dies
-// and whether it was still alive while the main thread was busy.
-static Thread sHeartbeatThread;
-static u64 sStartTick = 0;
-
-static void switch_heartbeat(void *arg) {
-    (void)arg;
-    for (;;) {
-        svcSleepThread(2000000000ULL);
-        char line[64];
-        snprintf(line, sizeof(line), "  heartbeat %.2f s", (double)armTicksToNs(armGetSystemTick() - sStartTick) / 1e9);
-        switch_log_raw(line);
-    }
-}
-
 void switch_init(void) {
     sStartTick = armGetSystemTick();
     mkdir("/switch", 0777);
@@ -155,10 +140,6 @@ void switch_init(void) {
     char line[96];
     snprintf(line, sizeof(line), "socketInitializeDefault: 0x%x", rc);
     switch_log_step(line);
-
-    if (R_SUCCEEDED(threadCreate(&sHeartbeatThread, switch_heartbeat, NULL, NULL, 0x4000, 0x2C, -2))) {
-        threadStart(&sHeartbeatThread);
-    }
 
     atexit(switch_shutdown);
 }
