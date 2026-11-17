@@ -1,24 +1,52 @@
 ![sm64coopdx Logo](textures/segment2/custom_coopdx_logo.rgba32.png)
 
-> This fork is an unofficial Switch 2 port for kaiHEN. It runs on a Switch 2 and reaches gameplay; sound and online play are untested. Build steps and the list of changes are in [docs/switch2.md](docs/switch2.md). Please report Switch problems here, not upstream.
+# Ounce-SM64CoopDX
 
-sm64coopdx is an online multiplayer project for the Super Mario 64 PC port that synchronizes all entities and every level for multiple players. The project was started by the Coop Deluxe Team. The purpose is to actively maintain and improve, but also continue sm64ex-coop, created by djoslin0. More features, customization, and power to the Lua API allow modders and players to enjoy Super Mario 64 more than ever!
+My port of [sm64coopdx](https://github.com/coop-deluxe/sm64coopdx), the online multiplayer Super Mario 64 PC port, to the Nintendo Switch 2. It builds as a `.nro` that runs from hbmenu under [kaiHEN](https://github.com/ouncebrew/kaihen), using [ounce-devkit](https://github.com/ouncebrew/ounce-devkit).
 
-Feel free to report bugs or contribute to the project.
+This is an unofficial fork. The game itself is the work of the Coop Deluxe team; what this repo adds is everything it took to get it running on the console.
 
-## Initial Goal (Accomplished)
-Create a mod for the PC port where multiple people can play together online.
+## Where it's at
 
-Unlike previous multiplayer projects, this one synchronizes enemies and events. This allows players to interact with the same world at the same time.
+On my Switch 2 it loads, gets to the menu and plays at full speed: the game logic holds 30 frames per second, as on N64. The built-in mods load, the software keyboard opens in text fields, and the buttons follow the Switch labels (A jumps, B punches).
 
-Interestingly enough though, the goal of the project has slowly evolved over time from simply just making a Super Mario 64 multiplayer mod to constantly maintaining and improving the project (notably the Lua API.)
+I haven't tested sound or online play yet. If you do, I'd like to know how it goes.
 
-## Documentation
+## What I had to change
 
-sm64coopdx is moddable via Lua, similar to Roblox and Garry's Mod's Lua APIs. To get started, click [here](docs/lua/lua.md) to see the Lua documentation. If you want to contribute to the repo, you can view the C documentation [here](docs/c/c.md).
+The PC code mostly compiles as is. Getting it to actually run took a few fixes:
 
-## Wiki
-The wiki is made using GitHub's wiki feature, you can go to the wiki tab or click [here](https://github.com/coop-deluxe/sm64coopdx/wiki).
+- **A Switch 2 build target.** `make TARGET_SWITCH=1` builds with devkitA64 and libounce, renders with OpenGL ES through OunceVK, and packs a `.nro`. Discord, CoopNet and the updater are off, since they only ship as PC binaries. Lua 5.3 gets built from source.
+- **The ROM copy.** On first launch the game copies your ROM to `baserom.us.z64`. On the Switch that copy came out empty, and every launch after that loaded the game's assets from an empty file and died partway through. It now uses the ROM where it finds it.
+- **Networking.** The Switch only has IPv4 sockets and the game opens an IPv6 one. On Switch it opens IPv4 and converts addresses at the edges, so the rest of the network code is untouched. Without CoopNet, you join games by IP address.
+- **Shaders.** A couple of the game's shaders mixed integers and floats, which desktop OpenGL tolerates and OpenGL ES rejects.
+- **Console details.** The keyboard only opens when you pick a text box, buttons are mapped by label instead of position, and the game shuts SDL down on exit so hbmenu comes back cleanly.
 
-## Community
-We have an official Discord server open to the public [here](https://discord.gg/TJVKHS4).
+Getting there took a log file on the SD card, since there is no console output. Each launch still writes `/switch/sm64coopdx/switch-log.txt`, which helps if something goes wrong.
+
+## Installing
+
+1. Build it (see below).
+2. Put `sm64coopdx.nro` and the `lang`, `mods`, `dynos` and `palettes` folders in `/switch/sm64coopdx/` on the SD card.
+3. Add your own Super Mario 64 (USA) ROM in `.z64` format to the same folder. Any file name works. No ROM or game asset is included here.
+4. Open hbmenu with kaiHEN (start a game while holding R) and launch sm64coopdx.
+
+## Building
+
+You need devkitPro with the Switch packages, ounce-devkit on top of it, and GNU make 4. The full steps, the complete list of changes and how to read the log are in [docs/switch2.md](docs/switch2.md).
+
+```sh
+sudo dkp-pacman -S --needed switch-dev switch-sdl2 switch-curl switch-zlib
+sh tools/build_lua_switch.sh
+DEVKITPRO=/opt/devkitpro gmake TARGET_SWITCH=1 -j8
+```
+
+## Credits
+
+- The [Coop Deluxe team](https://github.com/coop-deluxe/sm64coopdx) for sm64coopdx, and djoslin0 for sm64ex-coop before it.
+- The [ouncebrew](https://github.com/ouncebrew) folks for kaiHEN, libounce, OunceVK and ounce-devkit, which do the heavy lifting on the Switch 2 side.
+- The Super Mario 64 decompilation project, which all of this is built on.
+
+For Switch problems, ask here, not upstream. For anything about the game itself, the [sm64coopdx repo](https://github.com/coop-deluxe/sm64coopdx) and its [Discord](https://discord.gg/TJVKHS4) are the place.
+
+Not affiliated with Nintendo or the Coop Deluxe team.

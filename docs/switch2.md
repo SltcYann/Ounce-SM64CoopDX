@@ -50,6 +50,6 @@ The output is `build/us_pc/sm64coopdx.nro`. Use `make` instead of `gmake` on Lin
 
 ## Logs
 
-Each launch writes `/switch/sm64coopdx/switch-log.txt` on the SD card. It has a line for each startup step, the game's own log, the error message if it gives up, and the registers if it crashes. Attach that file when you report a problem.
+Each launch writes `/switch/sm64coopdx/switch-log.txt` on the SD card: memory at startup, a timed line for each startup step, the game's errors, the message of a fatal error, and the shutdown. If the game crashes and the loader passes the exception on, the registers end up there too. Attach that file when you report a problem.
 
 Crash addresses show up as `elf+0x...`. With a build of the same commit, `aarch64-none-elf-addr2line -f -e build/us_pc/sm64coopdx.elf 0x...` gives the function.
