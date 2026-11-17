@@ -20,8 +20,12 @@
 extern char __start__[];
 
 // libnx calls __libnx_exception_handler on this stack when the game crashes.
+// kaiHEN's loader forwards the game process's exceptions to the running NRO.
 alignas(16) u8 __nx_exception_stack[0x4000];
 u64 __nx_exception_stack_size = sizeof(__nx_exception_stack);
+// libnx skips the handler when a debugger is attached to the process, and
+// kaiHEN works by attaching to the host game. Run it anyway.
+u32 __nx_exception_ignoredebug = 1;
 
 // The log goes straight to a file descriptor, unbuffered, because when the
 // game dies the whole process is killed and buffers are lost.
@@ -138,6 +142,14 @@ void switch_init(void) {
     switch_log_step("sm64coopdx Switch 2 build starting");
     switch_log_memory();
 
+    // SDL's Switch driver maps touches from a 1280x720 range (the Switch 1
+    // screen). Ask the touch screen for that range before SDL initializes it,
+    // so taps land where they should on the 1920x1080 Switch 2 screen too.
+    Result trc = hidSetTouchScreenOutputRanges(1280, 720);
+    char tmsg[64];
+    snprintf(tmsg, sizeof(tmsg), "hidSetTouchScreenOutputRanges(1280, 720): 0x%x", trc);
+    switch_log_step(tmsg);
+
     Result rc = socketInitializeDefault();
     char line[96];
     snprintf(line, sizeof(line), "socketInitializeDefault: 0x%x", rc);
@@ -164,12 +176,15 @@ void switch_set_vsync(int enabled) {
 }
 
 unsigned int switch_display_refresh_rate(void) {
+    // with vsync on, the window presents at the display's current rate
     u16 num = 0, den = 0;
     if (R_SUCCEEDED(nwindowGetPresentInterval(nwindowGetDefault(), &num, &den)) && num > 0 && den > 0) {
         unsigned int hz = den / num;
         if (hz >= 30 && hz <= 240) { return hz; }
     }
-    return 60;
+    // with vsync off there is no interval to read: the handheld screen runs
+    // at 120 Hz, a TV's rate isn't known here, so assume 60 there
+    return appletGetOperationMode() == AppletOperationMode_Handheld ? 120 : 60;
 }
 
 // --- rumble ---------------------------------------------------------------

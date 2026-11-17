@@ -34,7 +34,7 @@ The output is `build/us_pc/sm64coopdx.nro`. Use `make` instead of `gmake` on Lin
 - Lua 5.3 has no prebuilt Switch library, so `tools/build_lua_switch.sh` builds 5.3.6 from lua.org (checksum checked).
 - Everything lives in `/switch/sm64coopdx` on the SD card: config, saves, mods and the ROM.
 - The Switch only has IPv4 sockets. The game opens an IPv6 socket and keeps v4-mapped addresses everywhere, so on Switch it opens an IPv4 socket and converts addresses in bind, sendto and recvfrom. The rest of the network code is untouched.
-- The window is fixed at 1280x720, fullscreen.
+- The window is a fixed 1920x1080 surface. The Fullscreen and Anti-aliasing options are hidden, since neither applies.
 - The software keyboard only opens when you select a text box (chat, IP field). Upstream starts text input at boot, which on Switch would pop the keyboard right away. What you type replaces the box's content, since the Switch keyboard opens empty and can't erase what was there.
 - Mumble positional audio is off (no shared memory).
 - Fatal errors show the system error dialog and go into the log file.
@@ -43,7 +43,7 @@ The output is `build/us_pc/sm64coopdx.nro`. Use `make` instead of `gmake` on Lin
 - Buttons are mapped by label, not by position: A jumps and confirms, B punches.
 - Rumble goes through libounce's HID directly, on both motors. SDL's Switch driver reports no rumble capability, so the game never vibrated.
 - Mods and DynOS packs are loaded once. On Switch the user folder and the game folder are the same, and upstream loads both, so every mod used to go through DynOS generation and loading twice at startup.
-- Vsync uses libounce's `nwindowSetFrameRates(0, 0, vrr)` instead of a swap interval, which in libounce always means N/60 s. It presents every refresh at the display's own rate, so 120 Hz with VRR on the handheld screen, and the game's Auto frame rate follows it.
+- Vsync uses libounce's `nwindowSetFrameRates(0, 0, vrr)` instead of a swap interval, which in libounce always means N/60 s. It presents every refresh at the display's own rate, so 120 Hz with VRR on the handheld screen, and the game's Auto frame rate follows it. With vsync off, Auto assumes 120 Hz in handheld mode and 60 Hz docked.
 - The ROM is used where it is. Upstream copies it to `baserom.us.z64` first, and on Switch that copy came out as an empty file.
 - The fragment shaders are valid GLSL ES 1.00 (upstream relies on desktop GLSL converting int to float).
 
@@ -51,10 +51,10 @@ The output is `build/us_pc/sm64coopdx.nro`. Use `make` instead of `gmake` on Lin
 
 - Audio hasn't been listened to yet. The audio device opens fine (no SDL audio error in the log). The `heap.c: Tried to alloc 5184/5760 bytes ... failed` lines are expected: at startup the game fills its sample buffer pool until it is full and stops at the first failure, on PC as well.
 - Hosting works locally. Joining another game and CoopNet lobbies haven't been tried yet.
-- Touch in the menus is untested. SDL's Switch driver converts touches using the Switch 1's 1280x720 screen, so taps may land in the wrong place.
+- Touch in the menus is untested. SDL's Switch driver turns touch-to-mouse off and expects touch coordinates in the Switch 1's 1280x720 range; the game turns touch-to-mouse back on (the menus follow the mouse) and asks the touch screen for that range with `hidSetTouchScreenOutputRanges`.
 
 ## Logs
 
-Each launch writes `/switch/sm64coopdx/switch-log.txt` on the SD card: memory at startup, a timed line for each startup step, the game's errors, the message of a fatal error, and the shutdown. If the game crashes and the loader passes the exception on, the registers end up there too. Attach that file when you report a problem.
+Each launch writes `/switch/sm64coopdx/switch-log.txt` on the SD card: memory at startup, a timed line for each startup step, the game's errors, the message of a fatal error, and the shutdown. If the game crashes, the registers end up there too: kaiHEN's loader forwards the exception to the game, and the handler runs even though kaiHEN is attached to the process as a debugger (`__nx_exception_ignoredebug`). Attach that file when you report a problem.
 
 Crash addresses show up as `elf+0x...`. With a build of the same commit, `aarch64-none-elf-addr2line -f -e build/us_pc/sm64coopdx.elf 0x...` gives the function.

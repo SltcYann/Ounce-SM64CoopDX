@@ -20,7 +20,8 @@ void switch_thread_log_init(void);
 // Vsync at the display's own refresh rate (120 Hz on the handheld screen,
 // with VRR) instead of libounce's swap interval, which always means N/60 s.
 void switch_set_vsync(int enabled);
-// The display's current refresh rate as the window presents at it: 120 or 60.
+// The display's refresh rate: what the window presents at with vsync on,
+// otherwise 120 in handheld mode and 60 docked.
 unsigned int switch_display_refresh_rate(void);
 // Rumble through libounce's HID directly: SDL's Switch joystick driver
 // reports no rumble capability, so the game never asked it to vibrate.

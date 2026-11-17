@@ -146,6 +146,10 @@ static void gfx_sdl_init(const char *window_title) {
 
     SDL_SetHint(SDL_HINT_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR, "0");
     SDL_Init(SDL_INIT_VIDEO);
+#ifdef TARGET_SWITCH
+    // SDL's Switch driver turns touch-to-mouse off, and djui menus only follow the mouse
+    SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "1");
+#endif
 #ifndef TARGET_SWITCH
     // on Switch this opens the software keyboard; djui starts it when a text box is focused
     SDL_StartTextInput();
@@ -393,6 +397,9 @@ static void gfx_sdl_delay(u32 ms) {
 }
 
 static int gfx_sdl_get_max_msaa(void) {
+#ifdef TARGET_SWITCH
+    return 0; // MSAA stays off on Switch (see gfx_sdl_init), so the menu hides the option
+#endif
     int maxSamples = 0;
     glGetIntegerv(GL_MAX_SAMPLES, &maxSamples);
     if (maxSamples > 16) { maxSamples = 16; }

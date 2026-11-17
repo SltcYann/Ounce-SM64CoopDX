@@ -202,10 +202,9 @@ static s32 get_num_frames_to_draw(f64 t, u32 frameLimit) {
 
 static u32 get_display_refresh_rate(void) {
 #ifdef TARGET_SWITCH
-    // SDL's Switch driver always reports 60 Hz. Ask the window instead: with
-    // vsync on it presents at the display's real rate, which can change
+    // SDL's Switch driver always reports 60 Hz. The real rate can change
     // between 60 and 120 Hz (docking, VRR), so it isn't cached.
-    if (configWindow.vsync) { return switch_display_refresh_rate(); }
+    return switch_display_refresh_rate();
 #endif
     static u32 refreshRate = 0;
     if (!refreshRate) {
