@@ -24,7 +24,7 @@ jobs:
       - name: Install host tools
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends build-essential python3 git ca-certificates curl xz-utils zip
+          apt-get install -y --no-install-recommends build-essential python3 git ca-certificates curl xz-utils zip bsdextrautils
 
       - name: Checkout repository
         uses: actions/checkout@v4
