@@ -42,6 +42,10 @@
 #include "pc/utils/misc.h"
 #include "pc/mods/mod_import.h"
 #include "pc/rom_checker.h"
+#include "pc/platform.h"
+#ifdef TARGET_SWITCH
+#include "pc/platform_switch.h"
+#endif
 
 #ifndef GL_MAX_SAMPLES
 #define GL_MAX_SAMPLES 0x8D57
@@ -130,6 +134,9 @@ static void gfx_sdl_init(const char *window_title) {
     SDL_StartTextInput();
 #endif
 
+#ifdef TARGET_SWITCH
+    configWindow.msaa = 0; // keep the EGL config request close to OunceVK's example
+#endif
     if (configWindow.msaa > 0) {
         SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
         SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, configWindow.msaa);
@@ -140,7 +147,12 @@ static void gfx_sdl_init(const char *window_title) {
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
-#ifdef USE_GLES
+#if defined(TARGET_SWITCH)
+    // OunceVK's own example asks for an ES 3 config and context; the game's GLSL ES 1.00 shaders still run on it
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+#elif defined(USE_GLES)
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);  // These attributes allow for hardware acceleration on RPis.
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
@@ -154,7 +166,14 @@ static void gfx_sdl_init(const char *window_title) {
         xpos, ypos, configWindow.w, configWindow.h,
         SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE
     );
+#ifdef TARGET_SWITCH
+    if (!wnd) { sys_fatal("SDL_CreateWindow failed: %s", SDL_GetError()); }
+#endif
     ctx = SDL_GL_CreateContext(wnd);
+#ifdef TARGET_SWITCH
+    if (!ctx) { sys_fatal("SDL_GL_CreateContext failed: %s", SDL_GetError()); }
+    switch_log_step("window and GL context created");
+#endif
 
     gfx_sdl_set_vsync(configWindow.vsync);
 

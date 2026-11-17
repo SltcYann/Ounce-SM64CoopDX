@@ -47,6 +47,9 @@
 #include "pc/djui/djui_fps_display.h"
 #include "pc/djui/djui_lua_profiler.h"
 #include "pc/debuglog.h"
+#ifdef TARGET_SWITCH
+#include "pc/platform_switch.h"
+#endif
 #include "pc/utils/misc.h"
 #include "pc/mods/mods.h"
 
@@ -462,6 +465,9 @@ void game_deinit(void) {
 }
 
 void game_exit(void) {
+#ifdef TARGET_SWITCH
+    switch_log_step("game_exit called");
+#endif
     LOG_INFO("exiting cleanly");
     game_deinit();
     exit(0);
@@ -500,10 +506,6 @@ void* main_game_init(UNUSED void* dummy) {
     return NULL;
 }
 
-#ifdef TARGET_SWITCH
-#include "pc/platform_switch.h"
-#endif
-
 int main(int argc, char *argv[]) {
 #ifdef TARGET_SWITCH
     switch_init();
@@ -511,6 +513,10 @@ int main(int argc, char *argv[]) {
 
     // handle terminal arguments
     if (!parse_cli_opts(argc, argv)) { return 0; }
+
+#ifdef TARGET_SWITCH
+    switch_log_step("cli options parsed");
+#endif
 
 #ifdef _WIN32
     // handle Windows console
@@ -534,11 +540,26 @@ int main(int argc, char *argv[]) {
     fs_init(gCLIOpts.savePath[0] ? gCLIOpts.savePath : sys_user_path());
 #endif
 
+#ifdef TARGET_SWITCH
+    switch_log_step("fs_init done");
+#endif
+
     configfile_load();
+
+#ifdef TARGET_SWITCH
+    // there is no console on Switch: always send info and errors to the log file
+    configDebugInfo = true;
+    configDebugError = true;
+    switch_log_step("config loaded");
+#endif
 
     legacy_folder_handler();
 
     select_graphics_backend();
+
+#ifdef TARGET_SWITCH
+    switch_log_step("graphics backend selected");
+#endif
 
     // create the window almost straight away
     if (!gGfxInited) {
@@ -548,7 +569,14 @@ int main(int argc, char *argv[]) {
         gWindowApi->set_scroll_callback(mouse_on_scroll);
     }
 
+#ifdef TARGET_SWITCH
+    switch_log_step("gfx_init done");
+#endif
+
     // render the rom setup screen
+#ifdef TARGET_SWITCH
+    switch_log_step(main_rom_handler() ? "rom found" : "no valid rom found, showing rom setup screen");
+#endif
     if (!main_rom_handler()) {
         if (!gCLIOpts.hideLoadingScreen) {
             render_rom_setup_screen(); // holds the game load until a valid rom is provided
@@ -562,6 +590,9 @@ int main(int argc, char *argv[]) {
     bool threadSuccess = false;
     if (!gCLIOpts.hideLoadingScreen && !gCLIOpts.headless) {
         if (init_thread_handle(&gLoadingThread, main_game_init, NULL, NULL, 0) == 0) {
+#ifdef TARGET_SWITCH
+            switch_log_step("loading thread started");
+#endif
             render_loading_screen(); // render the loading screen while the game is setup
             threadSuccess = true;
             destroy_mutex(&gLoadingThread);
@@ -571,6 +602,9 @@ int main(int argc, char *argv[]) {
         main_game_init(NULL); // failsafe incase threading doesn't work
     }
 
+#ifdef TARGET_SWITCH
+    switch_log_step("loading finished");
+#endif
     // initialize sm64 data and controllers
     thread5_game_loop(NULL);
 
@@ -584,6 +618,9 @@ int main(int argc, char *argv[]) {
     djui_unicode_init();
     djui_init_late();
     djui_console_message_dequeue();
+#ifdef TARGET_SWITCH
+    switch_log_step("djui ready, entering main loop");
+#endif
 
     show_update_popup();
 

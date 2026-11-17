@@ -47,6 +47,10 @@ int init_thread(struct ThreadHandle *handle, void *(*entry)(void *), void *arg, 
     }
 
     // Create our thread.
+#ifdef TARGET_SWITCH
+    // the default thread stack on Switch is small; the loading thread runs Lua, mods and ROM extraction
+    if (sp == NULL) { pthread_attr_setstacksize(&thattr, 8 * 1024 * 1024); }
+#endif
     int ret = pthread_create(&handle->thread, &thattr, entry, arg);
 
     // Destroy the thread attributes, They are no longer needed

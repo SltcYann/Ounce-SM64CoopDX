@@ -1000,7 +1000,7 @@ endif
 IS_DEV_OR_DEBUG := $(or $(filter 1,$(DEVELOPMENT)),$(filter 1,$(DEBUG)),0)
 ifeq ($(IS_DEV_OR_DEBUG),0)
   CFLAGS += -fno-ident -fno-common -ffile-prefix-map="$(PWD)"=. -D__DATE__="\"\"" -D__TIME__="\"\"" -Wno-builtin-macro-redefined
-  ifeq ($(OSX_BUILD),0)
+  ifeq ($(OSX_BUILD)$(TARGET_SWITCH),00)
     LDFLAGS += -Wl,--build-id=none
   endif
 else
