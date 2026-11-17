@@ -155,9 +155,6 @@ static void gfx_sdl_init(const char *window_title) {
     SDL_StartTextInput();
 #endif
 
-#ifdef TARGET_SWITCH
-    configWindow.msaa = 0; // keep the EGL config request close to OunceVK's example
-#endif
     if (configWindow.msaa > 0) {
         SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
         SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, configWindow.msaa);
@@ -195,19 +192,32 @@ static void gfx_sdl_init(const char *window_title) {
 #endif
     );
 #ifdef TARGET_SWITCH
+    ctx = wnd ? SDL_GL_CreateContext(wnd) : NULL;
+    if ((!wnd || !ctx) && configWindow.msaa > 0) {
+        // The MSAA setting is saved, so a surface refused with it would stop
+        // the game at every launch. Try again without it and keep going.
+        char msg[128];
+        snprintf(msg, sizeof(msg), "no window with %ux MSAA (%s), retrying without it", configWindow.msaa, SDL_GetError());
+        switch_log_step(msg);
+        if (wnd) { SDL_DestroyWindow(wnd); }
+        configWindow.msaa = 0;
+        SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 0);
+        SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 0);
+        wnd = SDL_CreateWindow(window_title, xpos, ypos, configWindow.w, configWindow.h, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+        ctx = wnd ? SDL_GL_CreateContext(wnd) : NULL;
+    }
     if (!wnd) { sys_fatal("SDL_CreateWindow failed: %s", SDL_GetError()); }
-#endif
-    ctx = SDL_GL_CreateContext(wnd);
-#ifdef TARGET_SWITCH
     if (!ctx) { sys_fatal("SDL_GL_CreateContext failed: %s", SDL_GetError()); }
     {
         int ww, wh, dw, dh;
         SDL_GetWindowSize(wnd, &ww, &wh);
         SDL_GL_GetDrawableSize(wnd, &dw, &dh);
         char msg[96];
-        snprintf(msg, sizeof(msg), "window and GL context created: window %dx%d, surface %dx%d", ww, wh, dw, dh);
+        snprintf(msg, sizeof(msg), "window and GL context created: window %dx%d, surface %dx%d, %ux MSAA", ww, wh, dw, dh, configWindow.msaa);
         switch_log_step(msg);
     }
+#else
+    ctx = SDL_GL_CreateContext(wnd);
 #endif
 
     gfx_sdl_set_vsync(configWindow.vsync);
@@ -397,9 +407,6 @@ static void gfx_sdl_delay(u32 ms) {
 }
 
 static int gfx_sdl_get_max_msaa(void) {
-#ifdef TARGET_SWITCH
-    return 0; // MSAA stays off on Switch (see gfx_sdl_init), so the menu hides the option
-#endif
     int maxSamples = 0;
     glGetIntegerv(GL_MAX_SAMPLES, &maxSamples);
     if (maxSamples > 16) { maxSamples = 16; }
