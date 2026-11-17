@@ -21,6 +21,10 @@ void resolve_domain(struct sockaddr_in6 *addr) {
     // set hints
     memset(&hints, 0, sizeof(hints));
     hints.ai_socktype = SOCK_DGRAM;
+#ifdef TARGET_SWITCH
+    // the socket is IPv4 only (see socket_linux.c), so an IPv6 result can't be reached
+    hints.ai_family = AF_INET;
+#endif
 
     // sanity check: remove square brackets from configJoinIp. getaddrinfo doesn't like those, at least on Linux.
     if (configJoinIp[0] == '[') {

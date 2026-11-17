@@ -13,7 +13,6 @@
 
 #include "platform_switch.h"
 
-#define SWITCH_DATA_DIR "/switch/sm64coopdx"
 #define SWITCH_LOG_PATH SWITCH_DATA_DIR "/switch-log.txt"
 
 // Start of this module, from libnx's crt0. Crash addresses are printed
@@ -24,17 +23,20 @@ extern char __start__[];
 alignas(16) u8 __nx_exception_stack[0x4000];
 u64 __nx_exception_stack_size = sizeof(__nx_exception_stack);
 
-// The log goes straight to a file descriptor and is synced after every write,
-// because when the game dies the whole process is killed and buffers are lost.
+// The log goes straight to a file descriptor, unbuffered, because when the
+// game dies the whole process is killed and buffers are lost.
 static int sLogFd = -1;
 static u64 sStartTick = 0;
 static Mutex sLogMutex;
 
-static void switch_log_write(const char *ptr, size_t len) {
+// sync: wait until it's on the SD card. Startup steps and fatal errors need
+// it; the game's own output during play doesn't, and syncing each line there
+// would stall the game thread on the SD card.
+static void switch_log_write(const char *ptr, size_t len, bool sync) {
     if (sLogFd < 0 || len == 0) { return; }
     mutexLock(&sLogMutex);
     write(sLogFd, ptr, len);
-    fsync(sLogFd);
+    if (sync) { fsync(sLogFd); }
     mutexUnlock(&sLogMutex);
 }
 
@@ -50,14 +52,14 @@ static void switch_log_raw(const char *line) {
     char buf[600];
     int n = snprintf(buf, sizeof(buf), "%s\n", line);
     if (n > (int)sizeof(buf) - 1) { n = sizeof(buf) - 1; }
-    if (n > 0) { switch_log_write(buf, (size_t)n); }
+    if (n > 0) { switch_log_write(buf, (size_t)n, true); }
 }
 
 // stdout and stderr of every thread (printf, the game's LOG_* macros) end up
 // here: this is how libnx's own console and nxlink redirect them.
 static ssize_t switch_log_devoptab_write(struct _reent *r, void *fd, const char *ptr, size_t len) {
     (void)r; (void)fd;
-    switch_log_write(ptr, len);
+    switch_log_write(ptr, len, false);
     return (ssize_t)len;
 }
 

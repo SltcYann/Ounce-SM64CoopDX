@@ -12,8 +12,6 @@
 #elif defined(__APPLE__)
 #include <mach-o/dyld.h>
 #elif defined(TARGET_SWITCH)
-#include <unistd.h>
-#include <sys/stat.h>
 #include "platform_switch.h"
 #else
 #include <unistd.h>
@@ -298,21 +296,15 @@ static void sys_fatal_impl(const char *msg) {
 
 #elif defined(TARGET_SWITCH)
 
-// Switch 2 (kaiHEN): everything lives next to the NRO in /switch/sm64coopdx on the SD card.
-// libnx makes the SD card the default device, so plain absolute paths work.
-#define SWITCH_DATA_DIR "/switch/sm64coopdx"
+// Switch 2 (kaiHEN): user data and game files share SWITCH_DATA_DIR, which
+// switch_init() creates at startup.
 
 const char *sys_user_path(void) {
-    static char path[SYS_MAX_PATH] = { 0 };
-    if ('\0' != path[0]) { return path; }
-    mkdir("/switch", 0777);
-    mkdir(SWITCH_DATA_DIR, 0777);
-    snprintf(path, SYS_MAX_PATH, "%s", SWITCH_DATA_DIR);
-    return path;
+    return SWITCH_DATA_DIR;
 }
 
 const char *sys_resource_path(void) {
-    return sys_exe_path_dir();
+    return SWITCH_DATA_DIR;
 }
 
 const char *sys_exe_path_dir(void) {
@@ -324,9 +316,7 @@ const char *sys_exe_path_file(void) {
 }
 
 static void sys_fatal_impl(const char *msg) {
-    fprintf(stderr, "FATAL ERROR:\n%s\n", msg);
-    fflush(stderr);
-    switch_show_error(msg);
+    switch_show_error(msg); // logs it too
     exit(1);
 }
 

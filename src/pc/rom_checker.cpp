@@ -59,15 +59,14 @@ static bool is_rom_valid(const std::string romPath) {
 
     for (VanillaMD5 *md5 = sVanillaMD5; md5->localizationName != NULL; md5++) {
         if (md5->md5 == ss.str()) {
-            std::string destPath = fs_get_write_path("") + std::string("baserom.") + md5->localizationName + ".z64";
-
 #ifdef TARGET_SWITCH
             // std::filesystem::copy_file left a 0-byte baserom.us.z64 on the SD card,
             // and the game then loaded its assets from that empty file. The ROM is
             // already in the game folder, so use it where it is.
-            (void)destPath;
             snprintf(gRomFilename, SYS_MAX_PATH, "%s", romPath.c_str());
 #else
+            std::string destPath = fs_get_write_path("") + std::string("baserom.") + md5->localizationName + ".z64";
+
             // Copy the rom to the user path
             if (romPath != destPath && !std::filesystem::exists(std::filesystem::path(destPath))) {
                 std::filesystem::copy_file(
@@ -87,6 +86,7 @@ static bool is_rom_valid(const std::string romPath) {
 }
 
 inline static bool scan_path_for_rom(const char *dir) {
+#ifdef TARGET_SWITCH
     // error_code overload: a missing or unreadable folder must not throw and end the game
     std::error_code ec;
     std::filesystem::directory_iterator it(dir, ec);
@@ -95,6 +95,9 @@ inline static bool scan_path_for_rom(const char *dir) {
         return false;
     }
     for (const auto &entry: it) {
+#else
+    for (const auto &entry: std::filesystem::directory_iterator(dir)) {
+#endif
         std::string path = entry.path().generic_string();
         if (path_ends_with(path.c_str(), ".z64")) {
             if (is_rom_valid(path)) { return true; }

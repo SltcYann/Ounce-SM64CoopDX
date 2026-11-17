@@ -4,6 +4,11 @@
 // Switch 2 (kaiHEN / libounce) glue. Kept apart from the game headers:
 // libnx's u64/s64 typedefs clash with the game's.
 
+// Everything the game reads and writes lives here on the SD card, next to the NRO.
+// libnx makes the SD card the default device, so plain absolute paths work.
+#define SWITCH_DATA_DIR "/switch/sm64coopdx"
+
+// Creates SWITCH_DATA_DIR, opens the log, starts sockets. First thing in main().
 void switch_init(void);
 void switch_show_error(const char *msg);
 // one line in /switch/sm64coopdx/switch-log.txt, flushed right away
