@@ -2,7 +2,7 @@
 
 This fork builds sm64coopdx as a `.nro` for the Switch 2, to run from hbmenu under [kaiHEN](https://github.com/ouncebrew/kaihen).
 
-It has not been run on a console yet. It compiles and links, and that's all I can say for sure. If you try it, please open an issue with what happened, even if it's just "black screen".
+It doesn't work yet. On the first console test it showed a black screen and went back to hbmenu, and launching it a second time closed the game kaiHEN was running in. The current build writes a log file to find out why (see Logs below).
 
 ## Installing
 
@@ -27,7 +27,7 @@ The output is `build/us_pc/sm64coopdx.nro`. Use `make` instead of `gmake` on Lin
 
 ## What changed for the Switch
 
-- `TARGET_SWITCH=1` in the Makefile: devkitA64 compiler, libounce instead of libnx, SDL2 from the Switch portlibs, and OpenGL ES 2 through OunceVK's EGL. It wraps the ELF into a `.nro` with an icon and a NACP.
+- `TARGET_SWITCH=1` in the Makefile: devkitA64 compiler, libounce instead of libnx, SDL2 from the Switch portlibs, and an OpenGL ES 3 context through OunceVK's EGL (the shaders are still GLSL ES 1.00). It wraps the ELF into a `.nro` with an icon and a NACP.
 - Discord, CoopNet and the updater are off. They ship as prebuilt PC libraries.
 - Lua 5.3 has no prebuilt Switch library, so `tools/build_lua_switch.sh` builds 5.3.6 from lua.org (checksum checked).
 - Everything lives in `/switch/sm64coopdx` on the SD card: config, saves, mods and the ROM.
@@ -36,7 +36,9 @@ The output is `build/us_pc/sm64coopdx.nro`. Use `make` instead of `gmake` on Lin
 - The window is fixed at 1280x720, fullscreen.
 - The software keyboard only opens when you select a text box (chat, IP field). Upstream starts text input at boot, which on Switch would pop the keyboard right away.
 - Mumble positional audio is off (no shared memory).
-- Fatal errors show the system error dialog.
+- Fatal errors show the system error dialog and go into the log file.
+- On exit the game calls `SDL_Quit()`, so the window, GL context and audio are released before hbmenu comes back.
+- The loading thread gets an 8 MB stack.
 
 ## Things I expect to break
 
@@ -44,4 +46,8 @@ The output is `build/us_pc/sm64coopdx.nro`. Use `make` instead of `gmake` on Lin
 - Performance and rendering through OunceVK are unknown.
 - Audio is untested.
 
-For logs, run `nxlink -s` on your computer before starting the game. stdout and stderr go there.
+## Logs
+
+Each launch writes `/switch/sm64coopdx/switch-log.txt` on the SD card. It has a line for each startup step, the game's own log, the error message if it gives up, and the registers if it crashes. Attach that file when you report a problem.
+
+Crash addresses show up as `elf+0x...`. With a build of the same commit, `aarch64-none-elf-addr2line -f -e build/us_pc/sm64coopdx.elf 0x...` gives the function.
