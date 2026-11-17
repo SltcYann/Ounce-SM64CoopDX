@@ -92,7 +92,10 @@ void DynOS_Gfx_Init() {
     SysPath _DynosPacksFolder = fstring("%s/%s", DYNOS_EXE_FOLDER, DYNOS_PACKS_FOLDER);
     ScanPacksFolder(_DynosPacksFolder);
 
-    // Scan the user path folder
+    // Scan the user path folder, unless it is the same folder (the Switch
+    // keeps everything in /switch/sm64coopdx): each pack would be added twice
     SysPath _DynosPacksUserFolder = fstring("%s%s", DYNOS_USER_FOLDER, DYNOS_PACKS_FOLDER);
-    ScanPacksFolder(_DynosPacksUserFolder);
+    if (_DynosPacksUserFolder != _DynosPacksFolder) {
+        ScanPacksFolder(_DynosPacksUserFolder);
+    }
 }
