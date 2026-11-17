@@ -630,7 +630,13 @@ int main(int argc, char *argv[]) {
 
     // render the rom setup screen
 #ifdef TARGET_SWITCH
-    switch_log_step(main_rom_handler() ? "rom found" : "no valid rom found, showing rom setup screen");
+    if (main_rom_handler()) {
+        char msg[SYS_MAX_PATH + 16];
+        snprintf(msg, sizeof(msg), "rom found: %s", gRomFilename);
+        switch_log_step(msg);
+    } else {
+        switch_log_step("no valid rom found, showing rom setup screen");
+    }
 #endif
     if (!main_rom_handler()) {
         if (!gCLIOpts.hideLoadingScreen) {
@@ -643,15 +649,7 @@ int main(int argc, char *argv[]) {
 
     // start the thread for setting up the game
     bool threadSuccess = false;
-#ifdef TARGET_SWITCH
-    // Experiment: the process died ~1.5 s into loading every time, wherever the
-    // loading thread was. Load on the main thread, with no loading screen drawn
-    // in parallel, to tell a loading bug from a rendering/concurrency bug.
-    switch_log_step("loading on the main thread (no threaded loading screen)");
-    if (false) {
-#else
     if (!gCLIOpts.hideLoadingScreen && !gCLIOpts.headless) {
-#endif
         if (init_thread_handle(&gLoadingThread, main_game_init, NULL, NULL, 0) == 0) {
 #ifdef TARGET_SWITCH
             switch_log_step("loading thread started");

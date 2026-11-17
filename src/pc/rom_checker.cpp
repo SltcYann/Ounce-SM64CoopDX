@@ -61,6 +61,13 @@ static bool is_rom_valid(const std::string romPath) {
         if (md5->md5 == ss.str()) {
             std::string destPath = fs_get_write_path("") + std::string("baserom.") + md5->localizationName + ".z64";
 
+#ifdef TARGET_SWITCH
+            // std::filesystem::copy_file left a 0-byte baserom.us.z64 on the SD card,
+            // and the game then loaded its assets from that empty file. The ROM is
+            // already in the game folder, so use it where it is.
+            (void)destPath;
+            snprintf(gRomFilename, SYS_MAX_PATH, "%s", romPath.c_str());
+#else
             // Copy the rom to the user path
             if (romPath != destPath && !std::filesystem::exists(std::filesystem::path(destPath))) {
                 std::filesystem::copy_file(
@@ -70,6 +77,7 @@ static bool is_rom_valid(const std::string romPath) {
             }
 
             snprintf(gRomFilename, SYS_MAX_PATH, "%s", destPath.c_str()); // Load the copied rom
+#endif
             gRomIsValid = true;
             return true;
         }
