@@ -474,33 +474,75 @@ void game_exit(void) {
 }
 
 void* main_game_init(UNUSED void* dummy) {
+#ifdef TARGET_SWITCH
+    switch_log_step("loading thread running");
+    switch_log_memory();
+#endif
     // load language
     if (!djui_language_init(configLanguage)) { snprintf(configLanguage, MAX_CONFIG_STRING, "%s", ""); }
 
+#ifdef TARGET_SWITCH
+    switch_log_step("language loaded");
+    switch_log_memory();
+#endif
+
     LOADING_SCREEN_MUTEX(loading_screen_set_segment_text("Loading"));
     dynos_gfx_init();
+#ifdef TARGET_SWITCH
+    switch_log_step("dynos_gfx_init done");
+    switch_log_memory();
+#endif
     enable_queued_dynos_packs();
     sync_objects_init_system();
 
+#ifdef TARGET_SWITCH
+    switch_log_step("dynos packs and sync objects done");
+    switch_log_memory();
+#endif
+
+#ifndef TARGET_SWITCH // no updater on Switch, and no reason to reach GitHub while loading
     if (gCLIOpts.network != NT_SERVER && !gCLIOpts.skipUpdateCheck) {
         check_for_updates();
     }
+#endif
 
     LOADING_SCREEN_MUTEX(loading_screen_set_segment_text("Loading ROM Assets"));
     rom_assets_load();
+#ifdef TARGET_SWITCH
+    switch_log_step("rom_assets_load done");
+    switch_log_memory();
+#endif
     smlua_text_utils_init();
 
     mods_init();
+#ifdef TARGET_SWITCH
+    switch_log_step("mods_init done");
+    switch_log_memory();
+#endif
     enable_queued_mods();
+
+#ifdef TARGET_SWITCH
+    switch_log_step("mods enabled");
+    switch_log_memory();
+#endif
     LOADING_SCREEN_MUTEX(
         gCurrLoadingSegment.percentage = 0;
         loading_screen_set_segment_text("Starting Game");
     );
 
     audio_init();
+#ifdef TARGET_SWITCH
+    switch_log_step("audio_init done");
+    switch_log_memory();
+#endif
     sound_init();
     network_player_init();
     mumble_init();
+
+#ifdef TARGET_SWITCH
+    switch_log_step("game init finished");
+    switch_log_memory();
+#endif
 
     gGameInited = true;
     return NULL;

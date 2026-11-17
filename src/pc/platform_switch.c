@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <switch.h>
+#include <switch2/memory/heap.h>
 #include <SDL2/SDL.h>
 
 #include "platform_switch.h"
@@ -35,6 +36,19 @@ static void switch_log_raw(const char *line) {
 void switch_log_step(const char *step) {
     char line[256];
     snprintf(line, sizeof(line), "[step %.3fs] %s", (double)armTicksToNs(armGetSystemTick()) / 1e9, step);
+    switch_log_raw(line);
+}
+
+void switch_log_memory(void) {
+    u64 total = 0, used = 0;
+    svcGetInfo(&total, InfoType_TotalMemorySize, CUR_PROCESS_HANDLE, 0);
+    svcGetInfo(&used, InfoType_UsedMemorySize, CUR_PROCESS_HANDLE, 0);
+    char line[256];
+    snprintf(line, sizeof(line),
+        "  memory: process %lu/%lu MB used, malloc heap %lu MB with at least %lu MB free (loader override: %s, %lu MB)",
+        (unsigned long)(used >> 20), (unsigned long)(total >> 20),
+        (unsigned long)(heapGetTotalSize() >> 20), (unsigned long)(heapGetFreeSize() >> 20),
+        envHasHeapOverride() ? "yes" : "no", (unsigned long)(envGetHeapOverrideSize() >> 20));
     switch_log_raw(line);
 }
 
@@ -73,16 +87,20 @@ void switch_init(void) {
     mkdir(SWITCH_DATA_DIR, 0777);
     chdir(SWITCH_DATA_DIR);
 
-    // stdout and stderr (the game's LOG_* output) go to a file on the SD card
-    sLog = fopen(SWITCH_LOG_PATH, "w");
+    // stdout and stderr (the game's LOG_* output) go to a file on the SD card.
+    // Every stream is opened in append mode so they don't write over each other.
+    FILE *truncate = fopen(SWITCH_LOG_PATH, "w");
+    if (truncate) { fclose(truncate); }
+    sLog = fopen(SWITCH_LOG_PATH, "a");
     if (sLog) {
         setvbuf(sLog, NULL, _IONBF, 0);
         freopen(SWITCH_LOG_PATH, "a", stdout);
         freopen(SWITCH_LOG_PATH, "a", stderr);
-        setvbuf(stdout, NULL, _IOLBF, 0);
+        setvbuf(stdout, NULL, _IONBF, 0);
         setvbuf(stderr, NULL, _IONBF, 0);
     }
     switch_log_step("sm64coopdx Switch 2 build starting");
+    switch_log_memory();
 
     Result rc = socketInitializeDefault();
     char line[96];

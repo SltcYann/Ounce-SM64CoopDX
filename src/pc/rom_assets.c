@@ -1,5 +1,6 @@
 #include <PR/ultratypes.h>
 #include "rom_assets.h"
+#include "platform.h"
 #include "pc/debuglog.h"
 #include "rom_checker.h"
 #include "apparition.inc.c"
@@ -171,9 +172,17 @@ void rom_assets_load(void) {
     assert(fs_sys_file_exists(gRomFilename)); // Should never be false
 
     sRomFile = fopen(gRomFilename, "rb");
+#ifdef TARGET_SWITCH
+    printf("rom_assets: opening '%s': %s\n", gRomFilename, sRomFile ? "ok" : "FAILED");
+    if (!sRomFile) { sys_fatal("Could not open the ROM:\n%s", gRomFilename); }
+    int loadedAssets = 0;
+#endif
 
     while (sRomAssets) {
         rom_asset_load(sRomAssets);
+#ifdef TARGET_SWITCH
+        if (++loadedAssets % 200 == 0) { printf("rom_assets: %d assets loaded\n", loadedAssets); }
+#endif
 
         struct RomAsset* next = sRomAssets->next;
         free(sRomAssets);
