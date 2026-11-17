@@ -13,6 +13,9 @@
 
 #include "controller_api.h"
 #include "controller_sdl.h"
+#ifdef TARGET_SWITCH
+#include "pc/platform_switch.h"
+#endif
 #include "controller_mouse.h"
 #include "pc/pc_main.h"
 #include "pc/configfile.h"
@@ -218,6 +221,9 @@ static inline void update_analog_stick(s8 *stick_x, s8 *stick_y,
 
 extern s16 gMenuMode;
 static void controller_sdl_read(OSContPad *pad) {
+#ifdef TARGET_SWITCH
+    switch_rumble_update();
+#endif
     if (!init_ok) { return; }
 
     if ((gNewCamera.isMouse || get_first_person_enabled() || gDjuiHudLockMouse) && !is_game_paused() && !gDjuiPanelPauseCreated && !gDjuiInMainMenu && !gDjuiChatBoxFocus && !gDjuiConsoleFocus && gWindowApi->has_focus()) {
@@ -358,6 +364,10 @@ static void controller_sdl_read(OSContPad *pad) {
 }
 
 static void controller_sdl_rumble_play(f32 strength, f32 length) {
+#ifdef TARGET_SWITCH
+    switch_rumble_play(strength, length);
+    return;
+#endif
     if (sdl_haptic) {
         SDL_HapticRumblePlay(sdl_haptic, strength, (u32)(length * 1000.0f));
     } else {
@@ -371,6 +381,10 @@ static void controller_sdl_rumble_play(f32 strength, f32 length) {
 }
 
 static void controller_sdl_rumble_stop(void) {
+#ifdef TARGET_SWITCH
+    switch_rumble_stop();
+    return;
+#endif
     if (sdl_haptic) {
         SDL_HapticRumbleStop(sdl_haptic);
     } else {

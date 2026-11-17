@@ -170,6 +170,80 @@ unsigned int switch_display_refresh_rate(void) {
     return 60;
 }
 
+// --- rumble ---------------------------------------------------------------
+
+typedef struct {
+    HidNpadIdType id;
+    u32 style;                       // style set the handles were made for
+    HidVibrationDeviceHandle handles[2];
+    s32 count;
+} SwitchRumblePad;
+
+static SwitchRumblePad sRumblePads[2] = {
+    { HidNpadIdType_Handheld, 0, {{0}}, 0 },
+    { HidNpadIdType_No1,      0, {{0}}, 0 },
+};
+static u64 sRumbleEndTick = 0;
+static bool sRumbleActive = false;
+
+// (Re)creates the vibration handles when the controller in that slot changes
+// (Joy-Con attached or detached, Pro Controller connected).
+static bool switch_rumble_prepare(SwitchRumblePad *pad) {
+    u32 styles = hidGetNpadStyleSet(pad->id);
+    if (styles == 0) { pad->count = 0; pad->style = 0; return false; }
+    if (styles == pad->style && pad->count > 0) { return true; }
+
+    static const HidNpadStyleTag kTwoMotorStyles[] = {
+        HidNpadStyleTag_NpadHandheld, HidNpadStyleTag_NpadFullKey, HidNpadStyleTag_NpadJoyDual,
+    };
+    pad->count = 0;
+    pad->style = styles;
+    for (unsigned i = 0; i < sizeof(kTwoMotorStyles) / sizeof(kTwoMotorStyles[0]); i++) {
+        if (!(styles & kTwoMotorStyles[i])) { continue; }
+        if (R_SUCCEEDED(hidInitializeVibrationDevices(pad->handles, 2, pad->id, kTwoMotorStyles[i]))) {
+            pad->count = 2;
+            return true;
+        }
+    }
+    return false;
+}
+
+static void switch_rumble_send(float amplitude) {
+    HidVibrationValue values[2];
+    for (int i = 0; i < 2; i++) {
+        values[i].amp_low = amplitude;
+        values[i].freq_low = 160.0f;
+        values[i].amp_high = amplitude;
+        values[i].freq_high = 320.0f;
+    }
+    for (unsigned p = 0; p < sizeof(sRumblePads) / sizeof(sRumblePads[0]); p++) {
+        if (switch_rumble_prepare(&sRumblePads[p])) {
+            hidSendVibrationValues(sRumblePads[p].handles, values, sRumblePads[p].count);
+        }
+    }
+}
+
+void switch_rumble_play(float strength, float seconds) {
+    if (strength < 0.0f) { strength = 0.0f; }
+    if (strength > 1.0f) { strength = 1.0f; }
+    if (strength == 0.0f || seconds <= 0.0f) { switch_rumble_stop(); return; }
+    switch_rumble_send(strength);
+    sRumbleEndTick = armGetSystemTick() + armNsToTicks((u64)(seconds * 1e9f));
+    sRumbleActive = true;
+}
+
+void switch_rumble_stop(void) {
+    if (!sRumbleActive) { return; }
+    switch_rumble_send(0.0f);
+    sRumbleActive = false;
+}
+
+void switch_rumble_update(void) {
+    if (sRumbleActive && armGetSystemTick() >= sRumbleEndTick) {
+        switch_rumble_stop();
+    }
+}
+
 void switch_show_error(const char *msg) {
     char line[512];
     snprintf(line, sizeof(line), "FATAL: %s", msg);

@@ -17,5 +17,11 @@ void switch_thread_log_init(void);
 void switch_set_vsync(int enabled);
 // The display's current refresh rate as the window presents at it: 120 or 60.
 unsigned int switch_display_refresh_rate(void);
+// Rumble through libounce's HID directly: SDL's Switch joystick driver
+// reports no rumble capability, so the game never asked it to vibrate.
+void switch_rumble_play(float strength, float seconds);
+void switch_rumble_stop(void);
+// Stops the rumble once its duration has passed. Call it every frame.
+void switch_rumble_update(void);
 
 #endif
