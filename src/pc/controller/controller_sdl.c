@@ -126,6 +126,18 @@ static void controller_sdl_init(void) {
 
     haptics_enabled = (SDL_InitSubSystem(SDL_INIT_HAPTIC) == 0);
 
+#ifdef TARGET_SWITCH
+    // SDL's built-in Switch mapping is positional (Xbox layout): the bottom
+    // button, labelled B, is SDL's A. Map by label instead, so A jumps and
+    // confirms like in every Switch game. A gamecontrollerdb file loaded
+    // below can still override this.
+    SDL_GameControllerAddMapping(
+        "000038f853776974636820436f6e7400,Switch Controller,"
+        "a:b0,b:b1,x:b2,y:b3,back:b11,dpdown:b15,dpleft:b12,dpright:b14,dpup:b13,"
+        "leftshoulder:b6,leftstick:b4,lefttrigger:b8,leftx:a0,lefty:a1,"
+        "rightshoulder:b7,rightstick:b5,righttrigger:b9,rightx:a2,righty:a3,start:b10,");
+#endif
+
     // try loading an external gamecontroller mapping file
     uint64_t gcsize = 0;
     void *gcdata = fs_load_file("gamecontrollerdb.txt", &gcsize);
