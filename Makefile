@@ -72,6 +72,8 @@ USE_APP ?= 1
 MIN_MACOS_VERSION ?= 11
 # Make some small adjustments for handheld devices
 HANDHELD ?= 0
+# Build a Switch 2 NRO with ounce-devkit (libounce + OunceVK), for kaiHEN
+TARGET_SWITCH ?= 0
 
 # Various workarounds for weird toolchains
 NO_BZERO_BCOPY ?= 0
@@ -109,6 +111,11 @@ endif
 
 ifeq ($(HOST_OS),Windows)
   WINDOWS_BUILD := 1
+endif
+
+ifeq ($(TARGET_SWITCH),1)
+  HOST_IS_DARWIN := $(filter Darwin,$(HOST_OS))
+  HOST_OS := Switch
 endif
 
 ifeq ($(HOST_OS),Darwin)
@@ -307,6 +314,28 @@ ifeq ($(TARGET_RPI),1)
 	endif
 endif
 
+ifeq ($(TARGET_SWITCH),1)
+  $(info Compiling for Switch 2 (ounce-devkit))
+  ifeq ($(strip $(DEVKITPRO)),)
+    $(error DEVKITPRO is not set, run: export DEVKITPRO=/opt/devkitpro)
+  endif
+  DISCORD_SDK := 0
+  COOPNET := 0
+  UPDATER := 0
+  USE_APP := 0
+  OSX_BUILD := 0
+  WINDOWS_BUILD := 0
+  HANDHELD := 1
+  CROSS := $(DEVKITPRO)/devkitA64/bin/aarch64-none-elf-
+  SWITCH_PORTLIBS := $(DEVKITPRO)/portlibs/switch
+  SWITCH2_PORTLIBS := $(DEVKITPRO)/portlibs/switch2
+  LIBOUNCE := $(DEVKITPRO)/libounce
+  SWITCH_ARCH := -mcpu=cortex-a78c+crypto -mtp=soft -fPIE
+  OPT_FLAGS := -O2 $(SWITCH_ARCH) -ffunction-sections
+  # newlib's limits.h hides LLONG_MAX in C++, which luaconf.h needs
+  EXTRA_CPP_FLAGS += -include climits
+endif
+
 ifeq ($(TARGET_RK3588),1)
   $(info Compiling for RK3588)
   DISCORD_SDK := 0
@@ -355,6 +384,10 @@ endif
 
 ifeq ($(TARGET_RK3588),1) # Define RK3588 to change SDL2 title & GLES2 hints
   DEFINES += USE_GLES=1
+endif
+
+ifeq ($(TARGET_SWITCH),1)
+  DEFINES += TARGET_SWITCH=1 __SWITCH__=1 __SWITCH2__=1 USE_GLES=1
 endif
 
 ifeq ($(OSX_BUILD),1) # Modify GFX & SDL2 for OSX GL
@@ -445,7 +478,9 @@ BUILD_DIR := $(BUILD_DIR_BASE)/$(VERSION)_pc
 ifeq ($(WINDOWS_BUILD),1)
 	EXE := $(BUILD_DIR)/sm64coopdx.exe
 else # Linux builds/binary namer
-	ifeq ($(TARGET_RPI),1)
+	ifeq ($(TARGET_SWITCH),1)
+		EXE := $(BUILD_DIR)/sm64coopdx.elf
+	else ifeq ($(TARGET_RPI),1)
 		EXE := $(BUILD_DIR)/sm64coopdx.arm
 	else
 		EXE := $(BUILD_DIR)/sm64coopdx
@@ -673,7 +708,7 @@ else
 endif
 
 # thank you apple very cool
-ifeq ($(HOST_OS),Darwin)
+ifeq ($(HOST_OS)$(HOST_IS_DARWIN),Darwin)
   CP := gcp
 else
   CP := cp
@@ -725,6 +760,8 @@ endif
 # SDL2 Flags
 ifeq ($(WINDOWS_BUILD),1)
   BACKEND_LDFLAGS += -lglew32 -lglu32 -lopengl32
+else ifeq ($(TARGET_SWITCH),1)
+  BACKEND_LDFLAGS +=
 else ifeq ($(TARGET_RPI),1)
   BACKEND_LDFLAGS += -lGLESv2
 else ifeq ($(TARGET_RK3588),1)
@@ -738,18 +775,25 @@ endif
 
 # SDL can be used by different systems, so we consolidate all of that shit into this
 
-SDLCONFIG := $(CROSS)sdl2-config
+ifeq ($(TARGET_SWITCH),1)
+  SDLCONFIG := $(SWITCH_PORTLIBS)/bin/sdl2-config
+else
+  SDLCONFIG := $(CROSS)sdl2-config
+endif
 BACKEND_CFLAGS += -DHAVE_SDL2=1
 
 ifeq ($(OSX_BUILD),1)
   # on OSX at least the homebrew version of sdl-config gives include path as `.../include/SDL2` instead of `.../include`
   OSX_PREFIX := $(shell $(SDLCONFIG) --prefix)
   BACKEND_CFLAGS += -I$(OSX_PREFIX)/include $(shell $(SDLCONFIG) --cflags)
-else
+else ifneq ($(TARGET_SWITCH),1)
   BACKEND_CFLAGS += `$(SDLCONFIG) --cflags`
 endif
 
-ifeq ($(WINDOWS_BUILD),1)
+ifeq ($(TARGET_SWITCH),1)
+  BACKEND_CFLAGS += -I$(LIBOUNCE)/include -I$(SWITCH2_PORTLIBS)/include -I$(SWITCH_PORTLIBS)/include -I$(SWITCH_PORTLIBS)/include/SDL2
+  BACKEND_LDFLAGS += -L$(SWITCH2_PORTLIBS)/lib -L$(SWITCH_PORTLIBS)/lib -L$(LIBOUNCE)/lib
+else ifeq ($(WINDOWS_BUILD),1)
   BACKEND_LDFLAGS += `$(SDLCONFIG) --static-libs` -lsetupapi -luser32 -limm32 -lole32 -loleaut32 -lshell32 -lshlwapi -lwinmm -lversion
 else
   BACKEND_LDFLAGS += `$(SDLCONFIG) --libs`
@@ -814,12 +858,14 @@ else ifeq ($(TARGET_RK3588),1)
   LDFLAGS := $(OPT_FLAGS) -lm $(BACKEND_LDFLAGS) -no-pie
 else ifeq ($(OSX_BUILD),1)
   LDFLAGS := -lm $(BACKEND_LDFLAGS) -lpthread
+else ifeq ($(TARGET_SWITCH),1)
+  LDFLAGS := -specs=$(LIBOUNCE)/switch.specs $(SWITCH_ARCH) -Wl,-Map,$(BUILD_DIR)/sm64coopdx.map -Wl,--gc-sections $(BACKEND_LDFLAGS)
 else
   LDFLAGS := $(BITS) -march=$(TARGET_ARCH) -lm $(BACKEND_LDFLAGS) -no-pie -lpthread
 endif
 
 # used by crash handler and loading screen on linux
-ifeq ($(WINDOWS_BUILD),0)
+ifeq ($(WINDOWS_BUILD)$(TARGET_SWITCH),00)
   LDFLAGS += -rdynamic -ldl -pthread
 endif
 
@@ -858,12 +904,16 @@ LDFLAGS += -lz
 # Update checker library
 ifeq ($(WINDOWS_BUILD),1)
   LDFLAGS += -lwininet
+else ifeq ($(TARGET_SWITCH),1)
+  LDFLAGS += -lcurl
 else
   LDFLAGS += -lcurl
 endif
 
 # Lua
-ifeq ($(WINDOWS_BUILD),1)
+ifeq ($(TARGET_SWITCH),1)
+  LDFLAGS += -Llib/lua/switch -l:liblua53.a
+else ifeq ($(WINDOWS_BUILD),1)
   ifeq ($(TARGET_BITS), 32)
     LDFLAGS += -Llib/lua/win32 -l:liblua53.a
   else
@@ -967,7 +1017,9 @@ CFLAGS += -fPIE
 # Prevent a crash with -sopt
 export LANG := C
 
-ifeq ($(OSX_BUILD),0)
+ifeq ($(TARGET_SWITCH),1)
+  LDFLAGS += -lSDL2 -lEGL -lstdc++ -lpthread -lz -lnx -lm
+else ifeq ($(OSX_BUILD),0)
   LDFLAGS += -latomic
 endif
 
@@ -1119,6 +1171,21 @@ endef
 
 #all: $(ROM)
 all: $(EXE)
+
+ifeq ($(TARGET_SWITCH),1)
+SWITCH_NRO  := $(BUILD_DIR)/sm64coopdx.nro
+SWITCH_NACP := $(BUILD_DIR)/sm64coopdx.nacp
+SWITCH_VERSION := $(shell sed -n 's/.*SM64COOPDX_VERSION "\(.*\)".*/\1/p' src/pc/network/version.h)
+
+all: $(SWITCH_NRO)
+
+$(SWITCH_NACP): $(EXE)
+	$(V)$(DEVKITPRO)/tools/bin/nacptool --create "sm64coopdx" "coop-deluxe (Switch 2 port)" "$(SWITCH_VERSION)" $@
+
+$(SWITCH_NRO): $(EXE) $(SWITCH_NACP) res/switch/icon.jpg
+	@$(PRINT) "$(GREEN)Building NRO: $(BLUE)$@ $(NO_COL)\n"
+	$(V)$(DEVKITPRO)/tools/bin/elf2nro $(EXE) $@ --icon=res/switch/icon.jpg --nacp=$(SWITCH_NACP)
+endif
 
 ifeq ($(WINDOWS_BUILD),1)
 MAPFILE = $(BUILD_DIR)/coop.map

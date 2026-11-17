@@ -11,6 +11,10 @@
 #include <shlwapi.h>
 #elif defined(__APPLE__)
 #include <mach-o/dyld.h>
+#elif defined(TARGET_SWITCH)
+#include <unistd.h>
+#include <sys/stat.h>
+#include "platform_switch.h"
 #else
 #include <unistd.h>
 #endif
@@ -289,6 +293,40 @@ static void sys_fatal_impl(const char *msg) {
     MessageBoxA(NULL, msg, "Fatal error", MB_ICONERROR);
     fprintf(stderr, "FATAL ERROR:\n%s\n", msg);
     fflush(stderr);
+    exit(1);
+}
+
+#elif defined(TARGET_SWITCH)
+
+// Switch 2 (kaiHEN): everything lives next to the NRO in /switch/sm64coopdx on the SD card.
+// libnx makes the SD card the default device, so plain absolute paths work.
+#define SWITCH_DATA_DIR "/switch/sm64coopdx"
+
+const char *sys_user_path(void) {
+    static char path[SYS_MAX_PATH] = { 0 };
+    if ('\0' != path[0]) { return path; }
+    mkdir("/switch", 0777);
+    mkdir(SWITCH_DATA_DIR, 0777);
+    snprintf(path, SYS_MAX_PATH, "%s", SWITCH_DATA_DIR);
+    return path;
+}
+
+const char *sys_resource_path(void) {
+    return sys_exe_path_dir();
+}
+
+const char *sys_exe_path_dir(void) {
+    return SWITCH_DATA_DIR;
+}
+
+const char *sys_exe_path_file(void) {
+    return SWITCH_DATA_DIR "/sm64coopdx.nro";
+}
+
+static void sys_fatal_impl(const char *msg) {
+    fprintf(stderr, "FATAL ERROR:\n%s\n", msg);
+    fflush(stderr);
+    switch_show_error(msg);
     exit(1);
 }
 

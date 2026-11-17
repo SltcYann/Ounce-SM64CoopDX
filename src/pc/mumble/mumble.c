@@ -13,7 +13,9 @@
 
 #include <stdbool.h>
 
-#ifdef _WIN32
+#if defined(TARGET_SWITCH)
+	/* no shared memory on Switch: Mumble link disabled */
+#elif defined(_WIN32)
 	#include <windows.h>
 #else
 	#include <sys/mman.h>
@@ -30,7 +32,9 @@ s16 sPrevCheckArea;
 
 void mumble_init(void) {
 
-#ifdef _WIN32
+#if defined(TARGET_SWITCH)
+	return;
+#elif defined(_WIN32)
 	HANDLE hMapObject = OpenFileMappingW(FILE_MAP_ALL_ACCESS, FALSE, L"MumbleLink");
 	if (hMapObject == NULL)
 		return;

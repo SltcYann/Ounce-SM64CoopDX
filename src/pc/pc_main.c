@@ -500,7 +500,15 @@ void* main_game_init(UNUSED void* dummy) {
     return NULL;
 }
 
+#ifdef TARGET_SWITCH
+#include "pc/platform_switch.h"
+#endif
+
 int main(int argc, char *argv[]) {
+#ifdef TARGET_SWITCH
+    switch_init();
+#endif
+
     // handle terminal arguments
     if (!parse_cli_opts(argc, argv)) { return 0; }
 

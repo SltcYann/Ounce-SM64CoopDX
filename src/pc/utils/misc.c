@@ -715,6 +715,8 @@ void update_game(void) {
         CloseHandle(pi.hThread);
     }
     exit(0);
+#elif defined(TARGET_SWITCH)
+    (void)updateExecFilePath; // no updater on Switch
 #else
     fclose(stdin);
     fclose(stdout);

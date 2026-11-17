@@ -101,6 +101,14 @@ static void gfx_sdl_reset_dimension_and_pos(void) {
         return;
     }
 
+#ifdef TARGET_SWITCH
+    // one fixed-size native window; SDL scales it for docked mode
+    configWindow.x = WAPI_WIN_CENTERPOS;
+    configWindow.y = WAPI_WIN_CENTERPOS;
+    configWindow.w = 1280;
+    configWindow.h = 720;
+    configWindow.fullscreen = true;
+#endif
     int xpos = (configWindow.x == WAPI_WIN_CENTERPOS) ? SDL_WINDOWPOS_CENTERED : configWindow.x;
     int ypos = (configWindow.y == WAPI_WIN_CENTERPOS) ? SDL_WINDOWPOS_CENTERED : configWindow.y;
 
@@ -117,7 +125,10 @@ static void gfx_sdl_init(const char *window_title) {
 
     SDL_SetHint(SDL_HINT_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR, "0");
     SDL_Init(SDL_INIT_VIDEO);
+#ifndef TARGET_SWITCH
+    // on Switch this opens the software keyboard; djui starts it when a text box is focused
     SDL_StartTextInput();
+#endif
 
     if (configWindow.msaa > 0) {
         SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
