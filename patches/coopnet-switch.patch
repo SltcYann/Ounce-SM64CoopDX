@@ -1,5 +1,5 @@
 diff --git a/common/socket.cpp b/common/socket.cpp
-index c97aab9..b23d9c4 100755
+index c97aab9..1dc8c5a 100755
 --- a/common/socket.cpp
 +++ b/common/socket.cpp
 @@ -1,4 +1,7 @@
@@ -21,17 +21,18 @@ index c97aab9..b23d9c4 100755
  
  int SocketInitialize(int aAf, int aType, int aProtocol) {
      return socket(aAf, aType, aProtocol);
-@@ -171,6 +176,32 @@ void SocketLimitBuffer(int aSocket, int64_t* amount) {
+@@ -171,6 +176,33 @@ void SocketLimitBuffer(int aSocket, int64_t* amount) {
      }
  }
  
 +#ifdef __SWITCH__
 +// The Switch has no getifaddrs() or interface MAC addresses. Use a random
-+// value made once and kept next to the game, so the console keeps the same
-+// info bits between launches.
++// value made once and kept next to the game (the game makes its folder the
++// current directory at startup), so the console keeps the same info bits
++// between launches.
 +uint64_t SocketGetInfoBits(int aSocket) {
 +    (void)aSocket;
-+    const char* path = "/switch/sm64coopdx/coopnet-id.bin";
++    const char* path = "coopnet-id.bin";
 +    uint64_t value = 0;
 +    FILE* f = fopen(path, "rb");
 +    if (f) {
@@ -54,10 +55,28 @@ index c97aab9..b23d9c4 100755
  uint64_t SocketGetInfoBits(int aSocket) {
      struct ifaddrs* ifaddr = NULL;
      struct ifaddrs* ifa = NULL;
-@@ -218,5 +249,6 @@ uint64_t SocketGetInfoBits(int aSocket) {
+@@ -218,5 +250,6 @@ uint64_t SocketGetInfoBits(int aSocket) {
      info = SocketAddHash(info);
      return info;
  }
 +#endif // __SWITCH__
  
  #endif
+diff --git a/common/utils.cpp b/common/utils.cpp
+index f2f12f2..e578db2 100755
+--- a/common/utils.cpp
++++ b/common/utils.cpp
+@@ -74,6 +74,13 @@ std::string getExecutablePath() {
+     if (_NSGetExecutablePath(path, &size) == 0) {
+         return std::string(path);
+     }
++#elif defined(__SWITCH__)
++    // The NRO sits in the game folder, which the game makes the current
++    // directory at startup. Without this the executable hash sent to the
++    // server would always be 0.
++    if (getcwd(path, sizeof(path) - 16) != nullptr) {
++        return std::string(path) + "/sm64coopdx.nro";
++    }
+ #endif
+     return "";
+ }

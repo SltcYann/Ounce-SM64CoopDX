@@ -176,15 +176,35 @@ void switch_set_vsync(int enabled) {
 }
 
 unsigned int switch_display_refresh_rate(void) {
-    // with vsync on, the window presents at the display's current rate
+    // The frame pacing asks several times per frame; a few reads per second
+    // are enough to follow docking and the display switching rate.
+    static u64 sLastReadTick = 0;
+    static unsigned int sLastHz = 0;
+    // last rate actually read from the window, and the mode it was read in
+    static unsigned int sMeasuredHz = 0;
+    static AppletOperationMode sMeasuredMode = AppletOperationMode_Handheld;
+
+    u64 now = armGetSystemTick();
+    if (sLastHz != 0 && armTicksToNs(now - sLastReadTick) < 250000000ULL) { return sLastHz; }
+    sLastReadTick = now;
+
+    AppletOperationMode mode = appletGetOperationMode();
     u16 num = 0, den = 0;
-    if (R_SUCCEEDED(nwindowGetPresentInterval(nwindowGetDefault(), &num, &den)) && num > 0 && den > 0) {
-        unsigned int hz = den / num;
-        if (hz >= 30 && hz <= 240) { return hz; }
+    if (R_SUCCEEDED(nwindowGetPresentInterval(nwindowGetDefault(), &num, &den)) && num > 0 && den > 0
+        && den / num >= 30 && den / num <= 240) {
+        // with vsync on, the window presents at the display's current rate
+        sMeasuredHz = den / num;
+        sMeasuredMode = mode;
+        sLastHz = sMeasuredHz;
+    } else if (sMeasuredHz != 0 && sMeasuredMode == mode) {
+        // vsync off: no interval to read, reuse the last rate read in this mode
+        sLastHz = sMeasuredHz;
+    } else {
+        // never read in this mode: the handheld screen runs at 120 Hz, a TV's
+        // rate isn't known here, so assume 60 there
+        sLastHz = mode == AppletOperationMode_Handheld ? 120 : 60;
     }
-    // with vsync off there is no interval to read: the handheld screen runs
-    // at 120 Hz, a TV's rate isn't known here, so assume 60 there
-    return appletGetOperationMode() == AppletOperationMode_Handheld ? 120 : 60;
+    return sLastHz;
 }
 
 // --- rumble ---------------------------------------------------------------

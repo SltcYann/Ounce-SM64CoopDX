@@ -12,8 +12,9 @@ on:
   pull_request:
     branches: [ main ]
 
+# read-only by default; only the release job below can write
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build-switch2:
@@ -27,7 +28,7 @@ jobs:
           apt-get install -y --no-install-recommends build-essential python3 git ca-certificates curl xz-utils zip bsdextrautils
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Install ounce-devkit and the Switch libraries
         run: |
@@ -51,13 +52,25 @@ jobs:
           cd sd && zip -qr ../Ounce-SM64CoopDX-switch2.zip switch
 
       - name: Upload the build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: Ounce-SM64CoopDX-switch2
           path: Ounce-SM64CoopDX-switch2.zip
 
+  release:
+    # attaches the zip to the release of a v* tag; the only job with write access
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build-switch2
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download the build
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: Ounce-SM64CoopDX-switch2
+
       - name: Attach to the release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           files: Ounce-SM64CoopDX-switch2.zip
