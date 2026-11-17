@@ -45,7 +45,7 @@ The output is `build/us_pc/sm64coopdx.nro`. Use `make` instead of `gmake` on Lin
 
 ## Not tested yet
 
-- Audio is untested. The log shows the game's small audio heap refusing a few allocations of about 5 KB, so some sounds may be missing.
+- Audio hasn't been listened to yet. The audio device opens fine (no SDL audio error in the log). The `heap.c: Tried to alloc 5184/5760 bytes ... failed` lines are expected: at startup the game fills its sample buffer pool until it is full and stops at the first failure, on PC as well.
 - Online play is untested.
 
 ## Logs
