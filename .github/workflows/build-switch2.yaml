@@ -31,7 +31,9 @@ jobs:
 
       - name: Install ounce-devkit and the Switch libraries
         run: |
-          dkp-pacman -Sy --needed --noconfirm switch-dev switch-sdl2 switch-curl switch-zlib
+          # devkitPro refuses package downloads from CI runners; the image
+          # already has the Switch toolchain and these portlibs
+          for f in libSDL2.a libcurl.a libz.a; do test -f "$DEVKITPRO/portlibs/switch/lib/$f" || { echo "missing $f in the image"; exit 1; }; done
           git clone https://github.com/ouncebrew/ounce-devkit /tmp/ounce-devkit
           git -C /tmp/ounce-devkit checkout 75cea5538b3a57d8f2ecf53354274cf00a365d20
           # install.sh checks the devkit archive's SHA-256
