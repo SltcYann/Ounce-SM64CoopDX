@@ -1,0 +1,61 @@
+name: Build Switch 2
+
+# Builds the .nro on every push to main and packs it with the folders the
+# game needs, laid out for the SD card. A v* tag also attaches that zip to
+# the GitHub release of the same name.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+  build-switch2:
+    runs-on: ubuntu-24.04
+    # the image ounce-devkit's own Dockerfile starts from
+    container: docker.io/devkitpro/devkita64:20260219
+    steps:
+      - name: Install host tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends build-essential python3 git ca-certificates curl xz-utils zip
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install ounce-devkit and the Switch libraries
+        run: |
+          dkp-pacman -Sy --needed --noconfirm switch-dev switch-sdl2 switch-curl switch-zlib
+          git clone https://github.com/ouncebrew/ounce-devkit /tmp/ounce-devkit
+          git -C /tmp/ounce-devkit checkout 75cea5538b3a57d8f2ecf53354274cf00a365d20
+          # install.sh checks the devkit archive's SHA-256
+          sh /tmp/ounce-devkit/install.sh 20261115b
+          cat "$DEVKITPRO/ounce-devkit-version.txt"
+
+      - name: Build
+        run: make TARGET_SWITCH=1 -j"$(nproc)"
+
+      - name: Pack the SD card folder
+        run: |
+          mkdir -p sd/switch/sm64coopdx
+          cp build/us_pc/sm64coopdx.nro sd/switch/sm64coopdx/
+          cp -R build/us_pc/lang build/us_pc/mods build/us_pc/dynos build/us_pc/palettes sd/switch/sm64coopdx/
+          cd sd && zip -qr ../Ounce-SM64CoopDX-switch2.zip switch
+
+      - name: Upload the build
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ounce-SM64CoopDX-switch2
+          path: Ounce-SM64CoopDX-switch2.zip
+
+      - name: Attach to the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Ounce-SM64CoopDX-switch2.zip
