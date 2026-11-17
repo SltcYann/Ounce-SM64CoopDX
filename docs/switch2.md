@@ -40,6 +40,7 @@ The output is `build/us_pc/sm64coopdx.nro`. Use `make` instead of `gmake` on Lin
 - On exit the game calls `SDL_Quit()`, so the window, GL context and audio are released before hbmenu comes back.
 - The loading thread gets an 8 MB stack.
 - Buttons are mapped by label, not by position: A jumps and confirms, B punches.
+- Vsync uses libounce's `nwindowSetFrameRates(0, 0, vrr)` instead of a swap interval, which in libounce always means N/60 s. It presents every refresh at the display's own rate, so 120 Hz with VRR on the handheld screen, and the game's Auto frame rate follows it.
 - The ROM is used where it is. Upstream copies it to `baserom.us.z64` first, and on Switch that copy came out as an empty file.
 - The fragment shaders are valid GLSL ES 1.00 (upstream relies on desktop GLSL converting int to float).
 

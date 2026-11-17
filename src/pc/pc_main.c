@@ -201,6 +201,12 @@ static s32 get_num_frames_to_draw(f64 t, u32 frameLimit) {
 }
 
 static u32 get_display_refresh_rate(void) {
+#ifdef TARGET_SWITCH
+    // SDL's Switch driver always reports 60 Hz. Ask the window instead: with
+    // vsync on it presents at the display's real rate, which can change
+    // between 60 and 120 Hz (docking, VRR), so it isn't cached.
+    if (configWindow.vsync) { return switch_display_refresh_rate(); }
+#endif
     static u32 refreshRate = 0;
     if (!refreshRate) {
         SDL_DisplayMode mode;
@@ -629,7 +635,12 @@ int main(int argc, char *argv[]) {
     djui_init_late();
     djui_console_message_dequeue();
 #ifdef TARGET_SWITCH
-    switch_log_step("djui ready, entering main loop");
+    {
+        char msg[96];
+        snprintf(msg, sizeof(msg), "djui ready, entering main loop (vsync %d, display %u Hz)",
+            configWindow.vsync, switch_display_refresh_rate());
+        switch_log_step(msg);
+    }
 #endif
 
     show_update_popup();

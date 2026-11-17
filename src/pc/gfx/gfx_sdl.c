@@ -72,7 +72,11 @@ static void (*m_scroll)(float, float) = NULL;
 #define IS_FULLSCREEN() ((SDL_GetWindowFlags(wnd) & SDL_WINDOW_FULLSCREEN_DESKTOP) != 0)
 
 static inline void gfx_sdl_set_vsync(const bool enabled) {
+#ifdef TARGET_SWITCH
+    switch_set_vsync(enabled);
+#else
     SDL_GL_SetSwapInterval(enabled);
+#endif
 }
 
 static void gfx_sdl_set_fullscreen(void) {

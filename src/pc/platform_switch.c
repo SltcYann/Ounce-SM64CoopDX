@@ -144,6 +144,32 @@ void switch_init(void) {
     atexit(switch_shutdown);
 }
 
+void switch_set_vsync(int enabled) {
+    NWindow *nw = nwindowGetDefault();
+    // SDL first: eglSwapInterval picks FIFO or immediate presentation, and in
+    // libounce it also resets the window to "every N/60 s"
+    SDL_GL_SetSwapInterval(enabled ? 1 : 0);
+    if (enabled) {
+        // present every refresh at the highest rate available, with VRR:
+        // 120 Hz on the handheld screen, 60 Hz on a 60 Hz TV
+        Result rc = nwindowSetFrameRates(nw, 0, 0, true);
+        char msg[80];
+        snprintf(msg, sizeof(msg), "vsync on: nwindowSetFrameRates(0, 0, vrr) -> 0x%x", rc);
+        switch_log_step(msg);
+    } else {
+        switch_log_step("vsync off");
+    }
+}
+
+unsigned int switch_display_refresh_rate(void) {
+    u16 num = 0, den = 0;
+    if (R_SUCCEEDED(nwindowGetPresentInterval(nwindowGetDefault(), &num, &den)) && num > 0 && den > 0) {
+        unsigned int hz = den / num;
+        if (hz >= 30 && hz <= 240) { return hz; }
+    }
+    return 60;
+}
+
 void switch_show_error(const char *msg) {
     char line[512];
     snprintf(line, sizeof(line), "FATAL: %s", msg);
