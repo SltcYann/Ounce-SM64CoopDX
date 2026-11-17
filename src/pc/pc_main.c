@@ -475,6 +475,7 @@ void game_exit(void) {
 
 void* main_game_init(UNUSED void* dummy) {
 #ifdef TARGET_SWITCH
+    switch_thread_log_init();
     switch_log_step("loading thread running");
     switch_log_memory();
 #endif
@@ -507,6 +508,9 @@ void* main_game_init(UNUSED void* dummy) {
 #endif
 
     LOADING_SCREEN_MUTEX(loading_screen_set_segment_text("Loading ROM Assets"));
+#ifdef TARGET_SWITCH
+    switch_log_step("calling rom_assets_load");
+#endif
     rom_assets_load();
 #ifdef TARGET_SWITCH
     switch_log_step("rom_assets_load done");

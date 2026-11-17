@@ -6,6 +6,8 @@
 #include <time.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/iosupport.h>
 #include <switch.h>
 #include <switch2/memory/heap.h>
 #include <SDL2/SDL.h>
@@ -23,14 +25,50 @@ extern char __start__[];
 alignas(16) u8 __nx_exception_stack[0x4000];
 u64 __nx_exception_stack_size = sizeof(__nx_exception_stack);
 
-static FILE *sLog = NULL;
+// The log goes straight to a file descriptor and is synced after every write,
+// because when the game dies the whole process is killed and buffers are lost.
+static int sLogFd = -1;
+static Mutex sLogMutex;
+
+static void switch_log_write(const char *ptr, size_t len) {
+    if (sLogFd < 0 || len == 0) { return; }
+    mutexLock(&sLogMutex);
+    write(sLogFd, ptr, len);
+    fsync(sLogFd);
+    mutexUnlock(&sLogMutex);
+}
+
+// for the crash handler: the crashing thread may already hold the lock
+static void switch_log_raw_nolock(const char *line) {
+    if (sLogFd < 0) { return; }
+    write(sLogFd, line, strlen(line));
+    write(sLogFd, "\n", 1);
+    fsync(sLogFd);
+}
 
 static void switch_log_raw(const char *line) {
-    if (!sLog) { return; }
-    fputs(line, sLog);
-    fputc('\n', sLog);
-    fflush(sLog);
-    fsync(fileno(sLog));
+    char buf[600];
+    int n = snprintf(buf, sizeof(buf), "%s\n", line);
+    if (n > (int)sizeof(buf) - 1) { n = sizeof(buf) - 1; }
+    if (n > 0) { switch_log_write(buf, (size_t)n); }
+}
+
+// stdout and stderr of every thread (printf, the game's LOG_* macros) end up
+// here: this is how libnx's own console and nxlink redirect them.
+static ssize_t switch_log_devoptab_write(struct _reent *r, void *fd, const char *ptr, size_t len) {
+    (void)r; (void)fd;
+    switch_log_write(ptr, len);
+    return (ssize_t)len;
+}
+
+static const devoptab_t sLogDevoptab = {
+    .name = "switchlog",
+    .write_r = switch_log_devoptab_write,
+};
+
+void switch_thread_log_init(void) {
+    setvbuf(stdout, NULL, _IONBF, 0);
+    setvbuf(stderr, NULL, _IONBF, 0);
 }
 
 void switch_log_step(const char *step) {
@@ -68,17 +106,17 @@ void __libnx_exception_handler(ThreadExceptionDump *ctx) {
         ctx->error_desc,
         (unsigned long)ctx->pc.x, (unsigned long)(ctx->pc.x - base),
         (unsigned long)ctx->lr.x, (unsigned long)(ctx->lr.x - base));
-    switch_log_raw(line);
+    switch_log_raw_nolock(line);
     snprintf(line, sizeof(line), "CRASH: sp=0x%lx far=0x%lx module_base=0x%lx",
         (unsigned long)ctx->sp.x, (unsigned long)ctx->far.x, (unsigned long)base);
-    switch_log_raw(line);
+    switch_log_raw_nolock(line);
     for (int i = 0; i < 29; i += 4) {
         snprintf(line, sizeof(line), "CRASH: x%d=0x%lx x%d=0x%lx x%d=0x%lx x%d=0x%lx",
             i, (unsigned long)ctx->cpu_gprs[i].x,
             i + 1, i + 1 < 29 ? (unsigned long)ctx->cpu_gprs[i + 1].x : 0UL,
             i + 2, i + 2 < 29 ? (unsigned long)ctx->cpu_gprs[i + 2].x : 0UL,
             i + 3, i + 3 < 29 ? (unsigned long)ctx->cpu_gprs[i + 3].x : 0UL);
-        switch_log_raw(line);
+        switch_log_raw_nolock(line);
     }
 }
 
@@ -87,17 +125,12 @@ void switch_init(void) {
     mkdir(SWITCH_DATA_DIR, 0777);
     chdir(SWITCH_DATA_DIR);
 
-    // stdout and stderr (the game's LOG_* output) go to a file on the SD card.
-    // Every stream is opened in append mode so they don't write over each other.
-    FILE *truncate = fopen(SWITCH_LOG_PATH, "w");
-    if (truncate) { fclose(truncate); }
-    sLog = fopen(SWITCH_LOG_PATH, "a");
-    if (sLog) {
-        setvbuf(sLog, NULL, _IONBF, 0);
-        freopen(SWITCH_LOG_PATH, "a", stdout);
-        freopen(SWITCH_LOG_PATH, "a", stderr);
-        setvbuf(stdout, NULL, _IONBF, 0);
-        setvbuf(stderr, NULL, _IONBF, 0);
+    mutexInit(&sLogMutex);
+    sLogFd = open(SWITCH_LOG_PATH, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    if (sLogFd >= 0) {
+        devoptab_list[STD_OUT] = &sLogDevoptab;
+        devoptab_list[STD_ERR] = &sLogDevoptab;
+        switch_thread_log_init();
     }
     switch_log_step("sm64coopdx Switch 2 build starting");
     switch_log_memory();

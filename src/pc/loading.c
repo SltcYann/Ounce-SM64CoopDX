@@ -1,4 +1,7 @@
 #include "loading.h"
+#ifdef TARGET_SWITCH
+#include "platform_switch.h"
+#endif
 
 #include <assert.h>
 
@@ -39,7 +42,23 @@ static void loading_screen_produce_frame_callback(void) {
 }
 
 static void loading_screen_produce_one_frame(void) {
+#ifdef TARGET_SWITCH
+    // main-thread trace: the loading thread runs at the same time, so a crash
+    // during loading can also come from drawing this screen
+    static u32 sFrames = 0;
+    static char sLastText[64] = "";
+    sFrames++;
+    if (sFrames <= 3 || sFrames % 60 == 0 || strncmp(sLastText, gCurrLoadingSegment.str, sizeof(sLastText) - 1)) {
+        snprintf(sLastText, sizeof(sLastText), "%s", gCurrLoadingSegment.str);
+        char msg[128];
+        snprintf(msg, sizeof(msg), "loading screen frame %u: \"%s\"", sFrames, sLastText);
+        switch_log_step(msg);
+    }
+#endif
     produce_one_dummy_frame(loading_screen_produce_frame_callback, 0x00, 0x00, 0x00);
+#ifdef TARGET_SWITCH
+    if (sFrames <= 3) { switch_log_step("  frame done"); }
+#endif
 }
 
 static bool loading_screen_on_render(struct DjuiBase* base) {

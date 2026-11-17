@@ -10,5 +10,7 @@ void switch_show_error(const char *msg);
 void switch_log_step(const char *step);
 // process memory and heap use, to spot running out of memory
 void switch_log_memory(void);
+// make printf unbuffered on the calling thread, so nothing is lost if the process dies
+void switch_thread_log_init(void);
 
 #endif
