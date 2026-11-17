@@ -40,6 +40,8 @@ The output is `build/us_pc/sm64coopdx.nro`. Use `make` instead of `gmake` on Lin
 - On exit the game calls `SDL_Quit()`, so the window, GL context and audio are released before hbmenu comes back.
 - The loading thread gets an 8 MB stack.
 - Buttons are mapped by label, not by position: A jumps and confirms, B punches.
+- Rumble goes through libounce's HID directly, on both motors. SDL's Switch driver reports no rumble capability, so the game never vibrated.
+- Mods and DynOS packs are loaded once. On Switch the user folder and the game folder are the same, and upstream loads both, so every mod used to go through DynOS generation and loading twice at startup.
 - Vsync uses libounce's `nwindowSetFrameRates(0, 0, vrr)` instead of a swap interval, which in libounce always means N/60 s. It presents every refresh at the display's own rate, so 120 Hz with VRR on the handheld screen, and the game's Auto frame rate follows it.
 - The ROM is used where it is. Upstream copies it to `baserom.us.z64` first, and on Switch that copy came out as an empty file.
 - The fragment shaders are valid GLSL ES 1.00 (upstream relies on desktop GLSL converting int to float).
@@ -47,7 +49,8 @@ The output is `build/us_pc/sm64coopdx.nro`. Use `make` instead of `gmake` on Lin
 ## Not tested yet
 
 - Audio hasn't been listened to yet. The audio device opens fine (no SDL audio error in the log). The `heap.c: Tried to alloc 5184/5760 bytes ... failed` lines are expected: at startup the game fills its sample buffer pool until it is full and stops at the first failure, on PC as well.
-- Online play is untested.
+- Hosting works locally. Joining another game hasn't been tried yet.
+- Touch in the menus is untested. SDL's Switch driver converts touches using the Switch 1's 1280x720 screen, so taps may land in the wrong place.
 
 ## Logs
 

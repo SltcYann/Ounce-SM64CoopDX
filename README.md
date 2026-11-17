@@ -8,9 +8,9 @@ This is an unofficial fork. The game itself is the work of the Coop Deluxe team;
 
 ## Where it's at
 
-On my Switch 2 it loads, gets to the menu and plays at full speed: the game logic holds 30 frames per second, as on N64. The built-in mods load, the software keyboard opens in text fields, and the buttons follow the Switch labels (A jumps, B punches).
+On my Switch 2 it loads, gets to the menu and plays at full speed: the game logic holds 30 frames per second, as on N64. Sound works, hosting a game works, the built-in mods load, the software keyboard opens in text fields, and the buttons follow the Switch labels (A jumps, B punches).
 
-I haven't tested sound or online play yet. If you do, I'd like to know how it goes.
+Vsync at 120 Hz and rumble are fixed in the code but not yet confirmed on the console. Joining someone else's game, touch in the menus and docked mode haven't been tried yet. If you do, I'd like to know how it goes.
 
 ## What I had to change
 
@@ -20,20 +20,21 @@ The PC code mostly compiles as is. Getting it to actually run took a few fixes:
 - **The ROM copy.** On first launch the game copies your ROM to `baserom.us.z64`. On the Switch that copy came out empty, and every launch after that loaded the game's assets from an empty file and died partway through. It now uses the ROM where it finds it.
 - **Networking.** The Switch only has IPv4 sockets and the game opens an IPv6 one. On Switch it opens IPv4 and converts addresses at the edges, so the rest of the network code is untouched. Without CoopNet, you join games by IP address.
 - **Shaders.** A couple of the game's shaders mixed integers and floats, which desktop OpenGL tolerates and OpenGL ES rejects.
-- **Console details.** The keyboard only opens when you pick a text box, buttons are mapped by label instead of position, and the game shuts SDL down on exit so hbmenu comes back cleanly.
+- **The screen.** SDL's Switch driver was written for the Switch 1 and kept resizing the picture behind the game's back. The game now draws to a fixed 1920x1080 surface, and vsync follows the display's real refresh rate instead of SDL's fixed 60 Hz, which should reach 120 Hz on the handheld screen.
+- **Console details.** The keyboard only opens when you pick a text box and its text replaces the box's content, buttons are mapped by label instead of position, rumble talks to the controllers directly, mods load once instead of twice, and the game shuts SDL down on exit so hbmenu comes back cleanly.
 
 Getting there took a log file on the SD card, since there is no console output. Each launch still writes `/switch/sm64coopdx/switch-log.txt`, which helps if something goes wrong.
 
 ## Installing
 
-1. Build it (see below).
-2. Put `sm64coopdx.nro` and the `lang`, `mods`, `dynos` and `palettes` folders in `/switch/sm64coopdx/` on the SD card.
+1. Download `Ounce-SM64CoopDX-switch2.zip` from the [latest release](https://github.com/SltcYann/Ounce-SM64CoopDX/releases/latest), or build it yourself (below).
+2. Unzip it at the root of the SD card. It creates `/switch/sm64coopdx/` with the `.nro` and the `lang`, `mods`, `dynos` and `palettes` folders.
 3. Add your own Super Mario 64 (USA) ROM in `.z64` format to the same folder. Any file name works. No ROM or game asset is included here.
 4. Open hbmenu with kaiHEN (start a game while holding R) and launch sm64coopdx.
 
 ## Building
 
-You need devkitPro with the Switch packages, ounce-devkit on top of it, and GNU make 4. The full steps, the complete list of changes and how to read the log are in [docs/switch2.md](docs/switch2.md).
+Every push to `main` is built by GitHub Actions, and the zip is in the run's artifacts. To build it yourself, you need devkitPro with the Switch packages, ounce-devkit on top of it, and GNU make 4. The full steps, the complete list of changes and how to read the log are in [docs/switch2.md](docs/switch2.md).
 
 ```sh
 sudo dkp-pacman -S --needed switch-dev switch-sdl2 switch-curl switch-zlib
