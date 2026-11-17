@@ -120,7 +120,23 @@ void __libnx_exception_handler(ThreadExceptionDump *ctx) {
     }
 }
 
+// Writes a line every 250 ms, so the log shows exactly when the process dies
+// and whether it was still alive while the main thread was busy.
+static Thread sHeartbeatThread;
+static u64 sStartTick = 0;
+
+static void switch_heartbeat(void *arg) {
+    (void)arg;
+    for (;;) {
+        svcSleepThread(250000000ULL);
+        char line[64];
+        snprintf(line, sizeof(line), "  heartbeat %.2f s", (double)armTicksToNs(armGetSystemTick() - sStartTick) / 1e9);
+        switch_log_raw(line);
+    }
+}
+
 void switch_init(void) {
+    sStartTick = armGetSystemTick();
     mkdir("/switch", 0777);
     mkdir(SWITCH_DATA_DIR, 0777);
     chdir(SWITCH_DATA_DIR);
@@ -139,6 +155,10 @@ void switch_init(void) {
     char line[96];
     snprintf(line, sizeof(line), "socketInitializeDefault: 0x%x", rc);
     switch_log_step(line);
+
+    if (R_SUCCEEDED(threadCreate(&sHeartbeatThread, switch_heartbeat, NULL, NULL, 0x4000, 0x2C, -2))) {
+        threadStart(&sHeartbeatThread);
+    }
 
     atexit(switch_shutdown);
 }
