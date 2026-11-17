@@ -19,7 +19,8 @@ You need devkitPro with `switch-dev`, `switch-sdl2`, `switch-curl` and `switch-z
 
 ```sh
 sudo dkp-pacman -S --needed switch-dev switch-sdl2 switch-curl switch-zlib
-sh tools/build_lua_switch.sh     # once, builds lib/lua/switch/liblua53.a
+sh tools/build_lua_switch.sh     # optional, rebuilds lib/lua/switch/liblua53.a
+sh tools/build_coopnet_switch.sh # optional, rebuilds lib/coopnet/switch/*.a
 DEVKITPRO=/opt/devkitpro gmake TARGET_SWITCH=1 -j8
 ```
 
@@ -28,11 +29,11 @@ The output is `build/us_pc/sm64coopdx.nro`. Use `make` instead of `gmake` on Lin
 ## What changed for the Switch
 
 - `TARGET_SWITCH=1` in the Makefile: devkitA64 compiler, libounce instead of libnx, SDL2 from the Switch portlibs, and an OpenGL ES 3 context through OunceVK's EGL (the shaders are still GLSL ES 1.00). It wraps the ELF into a `.nro` with an icon and a NACP.
-- Discord, CoopNet and the updater are off. They ship as prebuilt PC libraries.
+- Discord and the updater are off. They only ship as prebuilt PC binaries.
+- CoopNet is on. Upstream ships it prebuilt for PC only, so `tools/build_coopnet_switch.sh` builds CoopNet and libjuice 1.6.2 from their sources (pinned, checksum-checked) into `lib/coopnet/switch`. Two small patches in `patches/` adapt them: libjuice wakes its poll loop with a local UDP socket, as it does on Windows, because the Switch has no `pipe()`; CoopNet's machine info bits come from a random value kept in `/switch/sm64coopdx/coopnet-id.bin`, since the Switch has no `getifaddrs()` or MAC address to read.
 - Lua 5.3 has no prebuilt Switch library, so `tools/build_lua_switch.sh` builds 5.3.6 from lua.org (checksum checked).
 - Everything lives in `/switch/sm64coopdx` on the SD card: config, saves, mods and the ROM.
 - The Switch only has IPv4 sockets. The game opens an IPv6 socket and keeps v4-mapped addresses everywhere, so on Switch it opens an IPv4 socket and converts addresses in bind, sendto and recvfrom. The rest of the network code is untouched.
-- Without CoopNet you join games by IP address.
 - The window is fixed at 1280x720, fullscreen.
 - The software keyboard only opens when you select a text box (chat, IP field). Upstream starts text input at boot, which on Switch would pop the keyboard right away. What you type replaces the box's content, since the Switch keyboard opens empty and can't erase what was there.
 - Mumble positional audio is off (no shared memory).
@@ -49,7 +50,7 @@ The output is `build/us_pc/sm64coopdx.nro`. Use `make` instead of `gmake` on Lin
 ## Not tested yet
 
 - Audio hasn't been listened to yet. The audio device opens fine (no SDL audio error in the log). The `heap.c: Tried to alloc 5184/5760 bytes ... failed` lines are expected: at startup the game fills its sample buffer pool until it is full and stops at the first failure, on PC as well.
-- Hosting works locally. Joining another game hasn't been tried yet.
+- Hosting works locally. Joining another game and CoopNet lobbies haven't been tried yet.
 - Touch in the menus is untested. SDL's Switch driver converts touches using the Switch 1's 1280x720 screen, so taps may land in the wrong place.
 
 ## Logs
