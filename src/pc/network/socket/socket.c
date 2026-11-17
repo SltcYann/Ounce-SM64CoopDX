@@ -81,6 +81,9 @@ void resolve_domain(struct sockaddr_in6 *addr) {
 }
 
 static int socket_bind(SOCKET socket, unsigned int port) {
+#ifdef TARGET_SWITCH
+    int rc = socket_switch_bind(socket, port);
+#else
     struct sockaddr_in6 rxAddr;
     // Clean struct to prevent rare cases of binding errors due to garbage data in that memory location. This just happened to me randomly on Windows and left me very confused.
     memset(&rxAddr, 0, sizeof(struct sockaddr_in6));
@@ -89,6 +92,7 @@ static int socket_bind(SOCKET socket, unsigned int port) {
     rxAddr.sin6_addr = in6addr_any;
 
     int rc = bind(socket, (SOCKADDR *)&rxAddr, sizeof(rxAddr));
+#endif
 
     if (rc != 0) {
         LOG_ERROR("bind failed with error %d", SOCKET_LAST_ERROR);
@@ -99,7 +103,12 @@ static int socket_bind(SOCKET socket, unsigned int port) {
 
 static int socket_send(SOCKET socket, struct sockaddr_in6* addr, u8* buffer, u16 bufferLength) {
     int addrSize = sizeof(struct sockaddr_in6);
+#ifdef TARGET_SWITCH
+    (void)addrSize;
+    int rc = socket_switch_sendto(socket, buffer, bufferLength, addr);
+#else
     int rc = sendto(socket, (char*)buffer, bufferLength, 0, (struct sockaddr*)addr, addrSize);
+#endif
     if (rc != SOCKET_ERROR) { return NO_ERROR; }
 
     int error = SOCKET_LAST_ERROR;
@@ -113,7 +122,12 @@ static int socket_receive(SOCKET socket, struct sockaddr_in6* rxAddr, u8* buffer
     *receiveLength = 0;
 
     RX_ADDR_SIZE_TYPE rxAddrSize = sizeof(struct sockaddr_in6);
+#ifdef TARGET_SWITCH
+    (void)rxAddrSize;
+    int rc = socket_switch_recvfrom(socket, buffer, bufferLength, rxAddr);
+#else
     int rc = recvfrom(socket, (char*)buffer, bufferLength, 0, (struct sockaddr*)rxAddr, &rxAddrSize);
+#endif
 
     for (int i = 1; i < MAX_PLAYERS; i++) {
         if (memcmp(rxAddr, &sAddr[i], sizeof(struct sockaddr_in6)) == 0) {
