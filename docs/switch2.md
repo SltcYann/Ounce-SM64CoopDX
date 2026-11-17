@@ -2,7 +2,7 @@
 
 This fork builds sm64coopdx as a `.nro` for the Switch 2, to run from hbmenu under [kaiHEN](https://github.com/ouncebrew/kaihen).
 
-It doesn't work yet. On the first console test it showed a black screen and went back to hbmenu, and launching it a second time closed the game kaiHEN was running in. The current build writes a log file to find out why (see Logs below).
+It runs. On a Switch 2 under kaiHEN it loads, reaches the menu and plays at full speed (the game logic runs at 30 frames per second, as on N64). The software keyboard works in text fields. Sound and online play haven't been tried yet.
 
 ## Installing
 
@@ -39,12 +39,14 @@ The output is `build/us_pc/sm64coopdx.nro`. Use `make` instead of `gmake` on Lin
 - Fatal errors show the system error dialog and go into the log file.
 - On exit the game calls `SDL_Quit()`, so the window, GL context and audio are released before hbmenu comes back.
 - The loading thread gets an 8 MB stack.
+- Buttons are mapped by label, not by position: A jumps and confirms, B punches.
+- The ROM is used where it is. Upstream copies it to `baserom.us.z64` first, and on Switch that copy came out as an empty file.
+- The fragment shaders are valid GLSL ES 1.00 (upstream relies on desktop GLSL converting int to float).
 
-## Things I expect to break
+## Not tested yet
 
-- Buttons follow SDL's Xbox-style layout, so jump will probably be on the bottom face button, which is B on a Switch pad.
-- Performance and rendering through OunceVK are unknown.
-- Audio is untested.
+- Audio is untested. The log shows the game's small audio heap refusing a few allocations of about 5 KB, so some sounds may be missing.
+- Online play is untested.
 
 ## Logs
 
