@@ -34,7 +34,7 @@ The output is `build/us_pc/sm64coopdx.nro`. Use `make` instead of `gmake` on Lin
 - The Switch only has IPv4 sockets. The game opens an IPv6 socket and keeps v4-mapped addresses everywhere, so on Switch it opens an IPv4 socket and converts addresses in bind, sendto and recvfrom. The rest of the network code is untouched.
 - Without CoopNet you join games by IP address.
 - The window is fixed at 1280x720, fullscreen.
-- The software keyboard only opens when you select a text box (chat, IP field). Upstream starts text input at boot, which on Switch would pop the keyboard right away.
+- The software keyboard only opens when you select a text box (chat, IP field). Upstream starts text input at boot, which on Switch would pop the keyboard right away. What you type replaces the box's content, since the Switch keyboard opens empty and can't erase what was there.
 - Mumble positional audio is off (no shared memory).
 - Fatal errors show the system error dialog and go into the log file.
 - On exit the game calls `SDL_Quit()`, so the window, GL context and audio are released before hbmenu comes back.

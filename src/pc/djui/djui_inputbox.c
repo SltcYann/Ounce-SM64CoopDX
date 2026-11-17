@@ -17,6 +17,9 @@ u8 gDjuiInputHeldShift   = 0;
 u8 gDjuiInputHeldControl = 0;
 u8 gDjuiInputHeldAlt     = 0;
 static u8 sCursorBlink = 0;
+#ifdef TARGET_SWITCH
+static bool sSwitchReplaceOnInput = false;
+#endif
 
 static void djui_inputbox_update_style(struct DjuiBase* base) {
     struct DjuiInputbox* inputbox = (struct DjuiInputbox*)base;
@@ -338,6 +341,9 @@ void djui_inputbox_on_key_up(UNUSED struct DjuiBase *base, int scancode) {
 }
 
 void djui_inputbox_on_focus_begin(UNUSED struct DjuiBase* base) {
+#ifdef TARGET_SWITCH
+    sSwitchReplaceOnInput = true;
+#endif
     gDjuiInputHeldShift   = 0;
     gDjuiInputHeldControl = 0;
     gDjuiInputHeldAlt     = 0;
@@ -350,6 +356,19 @@ void djui_inputbox_on_focus_end(UNUSED struct DjuiBase* base) {
 
 void djui_inputbox_on_text_input(struct DjuiBase *base, char* text) {
     struct DjuiInputbox *inputbox = (struct DjuiInputbox *) base;
+#ifdef TARGET_SWITCH
+    // The Switch software keyboard always opens empty and sends the whole
+    // string once confirmed, with no way to erase what the box already holds
+    // (typing 120 over 60 gave 60120). Its text replaces the box's content.
+    // SDL splits text longer than 31 bytes into several events, so only the
+    // first one after the keyboard opened clears the box.
+    if (sSwitchReplaceOnInput) {
+        sSwitchReplaceOnInput = false;
+        inputbox->buffer[0] = '\0';
+        inputbox->selection[0] = 0;
+        inputbox->selection[1] = 0;
+    }
+#endif
     char* msg = inputbox->buffer;
     int msgLen = strlen(msg);
     int textLen = strlen(text);
