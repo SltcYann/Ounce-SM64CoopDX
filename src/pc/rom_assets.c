@@ -187,7 +187,7 @@ void rom_assets_load(void) {
     while (sRomAssets) {
         rom_asset_load(sRomAssets);
 #ifdef TARGET_SWITCH
-        if (++loadedAssets % 200 == 0) {
+        if (++loadedAssets % 20 == 0) {
             char msg[64];
             snprintf(msg, sizeof(msg), "rom_assets: %d assets loaded", loadedAssets);
             switch_log_step(msg);

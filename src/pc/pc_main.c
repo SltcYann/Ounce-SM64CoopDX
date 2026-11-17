@@ -383,6 +383,15 @@ void *audio_thread(UNUSED void *arg) {
 }
 
 void produce_one_frame(void) {
+#ifdef TARGET_SWITCH
+    static u32 sGameFrames = 0;
+    sGameFrames++;
+    if (sGameFrames <= 120 || sGameFrames % 600 == 0) {
+        char msg[48];
+        snprintf(msg, sizeof(msg), "game frame %u", sGameFrames);
+        switch_log_step(msg);
+    }
+#endif
     CTX_EXTENT(CTX_NETWORK, network_update);
 
     CTX_EXTENT(CTX_INTERP, patch_interpolations_before);
@@ -634,7 +643,15 @@ int main(int argc, char *argv[]) {
 
     // start the thread for setting up the game
     bool threadSuccess = false;
+#ifdef TARGET_SWITCH
+    // Experiment: the process died ~1.5 s into loading every time, wherever the
+    // loading thread was. Load on the main thread, with no loading screen drawn
+    // in parallel, to tell a loading bug from a rendering/concurrency bug.
+    switch_log_step("loading on the main thread (no threaded loading screen)");
+    if (false) {
+#else
     if (!gCLIOpts.hideLoadingScreen && !gCLIOpts.headless) {
+#endif
         if (init_thread_handle(&gLoadingThread, main_game_init, NULL, NULL, 0) == 0) {
 #ifdef TARGET_SWITCH
             switch_log_step("loading thread started");
