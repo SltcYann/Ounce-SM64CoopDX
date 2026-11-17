@@ -120,7 +120,7 @@ void __libnx_exception_handler(ThreadExceptionDump *ctx) {
     }
 }
 
-// Writes a line every 250 ms, so the log shows exactly when the process dies
+// Writes a line every 2 s, so the log shows exactly when the process dies
 // and whether it was still alive while the main thread was busy.
 static Thread sHeartbeatThread;
 static u64 sStartTick = 0;
@@ -128,7 +128,7 @@ static u64 sStartTick = 0;
 static void switch_heartbeat(void *arg) {
     (void)arg;
     for (;;) {
-        svcSleepThread(250000000ULL);
+        svcSleepThread(2000000000ULL);
         char line[64];
         snprintf(line, sizeof(line), "  heartbeat %.2f s", (double)armTicksToNs(armGetSystemTick() - sStartTick) / 1e9);
         switch_log_raw(line);
