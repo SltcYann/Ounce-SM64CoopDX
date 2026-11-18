@@ -28,5 +28,8 @@ void switch_rumble_play(float strength, float seconds);
 void switch_rumble_stop(void);
 // Stops the rumble once its duration has passed. Call it every frame.
 void switch_rumble_update(void);
+// True while the software keyboard is open: the controller's buttons are
+// then for the keyboard, not for the game's menus.
+int switch_software_keyboard_open(void);
 
 #endif

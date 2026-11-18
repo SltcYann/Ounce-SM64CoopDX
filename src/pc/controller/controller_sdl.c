@@ -223,6 +223,8 @@ extern s16 gMenuMode;
 static void controller_sdl_read(OSContPad *pad) {
 #ifdef TARGET_SWITCH
     switch_rumble_update();
+    // the controller is typing on the software keyboard, not playing
+    if (switch_software_keyboard_open()) { return; }
 #endif
     if (!init_ok) { return; }
 

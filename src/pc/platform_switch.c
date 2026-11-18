@@ -282,6 +282,11 @@ void switch_rumble_update(void) {
     }
 }
 
+int switch_software_keyboard_open(void) {
+    // SDL's Switch driver stops text input when the keyboard closes
+    return SDL_IsTextInputActive() ? 1 : 0;
+}
+
 void switch_show_error(const char *msg) {
     char line[512];
     snprintf(line, sizeof(line), "FATAL: %s", msg);

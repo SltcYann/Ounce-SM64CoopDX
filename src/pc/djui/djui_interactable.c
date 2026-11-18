@@ -9,6 +9,9 @@
 #include "pc/controller/controller_mouse.h"
 #include "pc/controller/controller_keyboard.h"
 #include "pc/utils/misc.h"
+#ifdef TARGET_SWITCH
+#include "pc/platform_switch.h"
+#endif
 #include "pc/network/network.h"
 
 #include "sounds.h"
@@ -434,6 +437,19 @@ void djui_interactable_update(void) {
             }
         }
     }
+
+#ifdef TARGET_SWITCH
+    // The software keyboard is driven with the same controller: A types a key,
+    // B erases one. Without this, those presses also hit the focused text box,
+    // which drops focus on A or B and loses what was typed.
+    if (switch_software_keyboard_open()) {
+        padButtons = 0;
+        mouseButtons = 0;
+        // A that confirms the keyboard is still held when it closes: don't let
+        // it click the text box again and reopen it
+        sIgnoreInteractableUntilCursorReleased = true;
+    }
+#endif
 
     // update focused
     if (gInteractableFocus) {

@@ -35,7 +35,7 @@ The output is `build/us_pc/sm64coopdx.nro`. Use `make` instead of `gmake` on Lin
 - Everything lives in `/switch/sm64coopdx` on the SD card: config, saves, mods and the ROM.
 - The Switch only has IPv4 sockets. The game opens an IPv6 socket and keeps v4-mapped addresses everywhere, so on Switch it opens an IPv4 socket and converts addresses in bind, sendto and recvfrom. The rest of the network code is untouched.
 - The window is a fixed 1920x1080 surface, so the Fullscreen option is hidden. Anti-aliasing is available; if the console refuses a surface with the chosen MSAA, the game falls back to none and says so in the log, instead of failing at every launch.
-- The software keyboard only opens when you select a text box (chat, IP field). Upstream starts text input at boot, which on Switch would pop the keyboard right away. What you type replaces the box's content, since the Switch keyboard opens empty and can't erase what was there.
+- The software keyboard only opens when you select a text box (chat, IP field). Upstream starts text input at boot, which on Switch would pop the keyboard right away. What you type replaces the box's content, since the Switch keyboard opens empty and can't erase what was there. While it is open, the controller only drives the keyboard: the menus and the game ignore its buttons, otherwise A (type) and B (erase) would also close the text box.
 - Mumble positional audio is off (no shared memory).
 - Fatal errors show the system error dialog and go into the log file.
 - On exit the game calls `SDL_Quit()`, so the window, GL context and audio are released before hbmenu comes back.
