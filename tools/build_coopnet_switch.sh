@@ -56,10 +56,11 @@ for f in "$JUICE"/src/*.c; do
         -c "$f" -o "$WORK/o/juice/$(basename "${f%.c}").o"
 done
 
-# CoopNet: the client side only (common/), as upstream's libcoopnet.
+# CoopNet: the client side only (common/), as upstream's libcoopnet. LOGGING
+# sends its connection messages to stdout, which is switch-log.txt on Switch.
 mkdir -p "$WORK/o/coopnet"
 for f in "$COOPNET"/common/*.cpp; do
-    "$CXX" $ARCH $DEFS $INC -std=gnu++17 -include climits -include sys/time.h -include sys/select.h -I"$COOPNET/common" -I"$JUICE/include" \
+    "$CXX" $ARCH $DEFS $INC -DLOGGING -std=gnu++17 -include climits -include sys/time.h -include sys/select.h -I"$COOPNET/common" -I"$JUICE/include" \
         -c "$f" -o "$WORK/o/coopnet/$(basename "${f%.cpp}").o"
 done
 

@@ -1,3 +1,17 @@
+diff --git a/common/connection.cpp b/common/connection.cpp
+index 4259292..b40a5b7 100644
+--- a/common/connection.cpp
++++ b/common/connection.cpp
+@@ -105,7 +105,8 @@ void Connection::Receive() {
+     // limit the buffer to the available amount
+     SocketLimitBuffer(mSocket, &remaining);
+ 
+-#ifdef OSX_BUILD
++#if defined(OSX_BUILD) || defined(__SWITCH__)
++    // The Switch's BSD sockets do the same as macOS here.
+     // OSX seems to return errno 0, size 0 on recv() when there is nothing to receive.
+     // This causes the socket to think the connection is closed...
+     // So instead, we'll just not call it if there is no data available.
 diff --git a/common/socket.cpp b/common/socket.cpp
 index c97aab9..1dc8c5a 100755
 --- a/common/socket.cpp
